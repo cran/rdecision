@@ -404,25 +404,31 @@ list, with horizontal edges being labelled <span class="math inline">\(H_{i,j}\)
 similarly as <span class="math inline">\(V_{i,j}\)</span>.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create vertices</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) {</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) {</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    V <span class="ot">&lt;-</span> <span class="fu">c</span>(V, Node<span class="sc">$</span><span class="fu">new</span>(<span class="fu">paste</span>(<span class="st">&quot;N&quot;</span>,i,j,<span class="at">sep=</span><span class="st">&quot;&quot;</span>)))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> 1L <span class="sc">:</span> 5L) {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> 1L <span class="sc">:</span> 5L) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    V <span class="ot">&lt;-</span> <span class="fu">c</span>(V, Node<span class="sc">$</span><span class="fu">new</span>(<span class="fu">paste0</span>(<span class="st">&quot;N&quot;</span>, i, j)))</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># create edges</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) {</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>) {</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    E <span class="ot">&lt;-</span> <span class="fu">c</span>(E, Arrow<span class="sc">$</span><span class="fu">new</span>(V[[<span class="dv">5</span><span class="sc">*</span>(i<span class="dv">-1</span>)<span class="sc">+</span>j]], V[[<span class="dv">5</span><span class="sc">*</span>(i<span class="dv">-1</span>)<span class="sc">+</span>j<span class="sc">+</span><span class="dv">1</span>]], <span class="fu">paste</span>(<span class="st">&quot;H&quot;</span>,i,j,<span class="at">sep=</span><span class="st">&quot;&quot;</span>)))</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>} </span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>) {</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) {</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    E <span class="ot">&lt;-</span> <span class="fu">c</span>(E, Arrow<span class="sc">$</span><span class="fu">new</span>(V[[<span class="dv">5</span><span class="sc">*</span>(i<span class="dv">-1</span>)<span class="sc">+</span>j]], V[[<span class="dv">5</span><span class="sc">*</span>i<span class="sc">+</span>j]], <span class="fu">paste</span>(<span class="st">&quot;V&quot;</span>,i,j,<span class="at">sep=</span><span class="st">&quot;&quot;</span>)))</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>} </span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co"># create graph</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>G <span class="ot">&lt;-</span> Digraph<span class="sc">$</span><span class="fu">new</span>(V,E)</span></code></pre></div>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> 1L <span class="sc">:</span> 5L) {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> 1L <span class="sc">:</span> 4L) {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    a <span class="ot">&lt;-</span> Arrow<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      V[[5L <span class="sc">*</span> (i <span class="sc">-</span> 1L) <span class="sc">+</span> j]], V[[5L <span class="sc">*</span> (i <span class="sc">-</span> 1L) <span class="sc">+</span> j <span class="sc">+</span> 1L]], <span class="fu">paste0</span>(<span class="st">&quot;H&quot;</span>, i, j)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    E <span class="ot">&lt;-</span> <span class="fu">c</span>(E, a)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>} </span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> 1L <span class="sc">:</span> 4L) {</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> 1L <span class="sc">:</span> 5L) {</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    a <span class="ot">&lt;-</span> Arrow<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      V[[5L <span class="sc">*</span> (i <span class="sc">-</span> 1L) <span class="sc">+</span> j]], V[[5L <span class="sc">*</span> i <span class="sc">+</span> j]], <span class="fu">paste0</span>(<span class="st">&quot;V&quot;</span>, i, j)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    E <span class="ot">&lt;-</span> <span class="fu">c</span>(E, a)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>} </span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co"># create graph</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>G <span class="ot">&lt;-</span> Digraph<span class="sc">$</span><span class="fu">new</span>(V, E)</span></code></pre></div>
 </div>
 <div id="finding-the-paths" class="section level1">
 <h1>Finding the paths</h1>
@@ -434,16 +440,20 @@ connected, non-repeating edges.</p>
 <p>In this case, the number of restaurants traversed by each path is
 counted by comparing the label associated with each edge in each path
 with the labels of the edges which contain a restaurant.</p>
+<p>Note that although we cannot guarantee that node A is saved
+<em>within</em> the graph at index 1 and node B is saved at index 25, we
+do know that A and B are saved at indices 1 and 25 in the local list
+<code>V</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get all paths from A to B</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>A <span class="ot">&lt;-</span> V[[<span class="dv">1</span>]]</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>B <span class="ot">&lt;-</span> V[[<span class="dv">25</span>]]</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>P <span class="ot">&lt;-</span> G<span class="sc">$</span><span class="fu">paths</span>(A,B)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>A <span class="ot">&lt;-</span> V[[1L]]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>B <span class="ot">&lt;-</span> V[[25L]]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>P <span class="ot">&lt;-</span> G<span class="sc">$</span><span class="fu">paths</span>(A, B)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># convert paths to walks</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>W <span class="ot">&lt;-</span> <span class="fu">lapply</span>(P,<span class="cf">function</span>(p){G<span class="sc">$</span><span class="fu">walk</span>(p)})</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>W <span class="ot">&lt;-</span> <span class="fu">lapply</span>(P, <span class="cf">function</span>(p) G<span class="sc">$</span><span class="fu">walk</span>(p))</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># count and tabulate how many special edges each walk traverses</span></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>BB <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;V11&quot;</span>, <span class="st">&quot;H22&quot;</span>, <span class="st">&quot;V25&quot;</span>, <span class="st">&quot;H33&quot;</span>, <span class="st">&quot;V32&quot;</span>, <span class="st">&quot;H44&quot;</span>, <span class="st">&quot;V43&quot;</span>)</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>nw <span class="ot">&lt;-</span> <span class="fu">sapply</span>(W, <span class="cf">function</span>(w) {</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  lv <span class="ot">&lt;-</span> <span class="fu">sapply</span>(w, <span class="cf">function</span>(e) {e<span class="sc">$</span><span class="fu">label</span>() <span class="sc">%in%</span> BB}) </span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>nw <span class="ot">&lt;-</span> <span class="fu">vapply</span>(W, <span class="at">FUN.VALUE =</span> 1L, <span class="at">FUN =</span> <span class="cf">function</span>(w) {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  lv <span class="ot">&lt;-</span> <span class="fu">vapply</span>(w, <span class="at">FUN.VALUE =</span> <span class="cn">TRUE</span>, <span class="at">FUN =</span> <span class="cf">function</span>(e) e<span class="sc">$</span><span class="fu">label</span>() <span class="sc">%in%</span> BB) </span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sum</span>(lv))</span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>})</span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># tabulate </span></span>

@@ -1,6 +1,6 @@
 Package: rdecision
 Title: Decision Analytic Modelling in Health Economics
-Version: 1.1.2
+Version: 1.1.3
 Authors@R: c(
   person(given="Andrew", family="Sims", 
          email = "andrew.sims@newcastle.ac.uk", 
@@ -21,8 +21,9 @@ Description: Classes and functions for modelling health care interventions
   The package terminology follows Briggs "Decision Modelling for Health
   Economic Evaluation" (2006, ISBN:978-0-19-852662-9).
 Depends: R (>= 3.1.0)
-Imports: grid, R6, rlang (>= 0.4.2), stats, utils
-Suggests: covr, knitr, pander, rmarkdown, testthat (>= 3.0.0), utf8
+Imports: grid, R6, rlang (>= 0.4.2), stats
+Suggests: covr, grDevices, knitr, pander, rmarkdown, testthat (>=
+        3.0.0), utf8
 License: GPL-3
 Language: en-GB
 Encoding: UTF-8
@@ -30,10 +31,10 @@ RoxygenNote: 7.2.1
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2022-09-07 17:54:17 UTC; simsa
+Packaged: 2022-09-26 14:46:04 UTC; simsa
 Author: Andrew Sims [aut, cre] (<https://orcid.org/0000-0002-9553-7278>),
   Kim Fairbairn [aut] (<https://orcid.org/0000-0001-5108-6279>),
   Paola Cognigni [aut] (<https://orcid.org/0000-0001-5418-3103>)
 Maintainer: Andrew Sims <andrew.sims@newcastle.ac.uk>
 Repository: CRAN
-Date/Publication: 2022-09-07 18:10:01 UTC
+Date/Publication: 2022-09-26 15:10:02 UTC
