@@ -1,226 +1,236 @@
-## ---- include = FALSE---------------------------------------------------------
+## -----------------------------------------------------------------------------
+#' @title Write a monetary value
+#' @param x Monetary value, or vector of values
+#' @param p Logical; if TRUE show value to nearest penny, cent etc. If FALSE
+#' show it to the nearest pound, dollar, euro etc.
+#' @noRd
+gbp <- function(x, p = FALSE) {
+  digits <- if (p) 2L else 0L
+  s <- format(
+    x = vapply(X = x, FUN.VALUE = 1.0, FUN = round, digits = digits),
+    digits = NULL,
+    nsmall = digits,
+    scientific = FALSE,
+    big.mark = ","
+  )
+  return(s)
+}
+
+## -----------------------------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
+  echo = FALSE,
   comment = "#>"
 )
 
-## ----setup, echo=FALSE--------------------------------------------------------
+## -----------------------------------------------------------------------------
 library("rdecision")
 
-## ----decision-node------------------------------------------------------------
+## -----------------------------------------------------------------------------
+cost_diet <- 50.0
+cost_exercise <- 750.0
+cost_stent <- 5000.0
+
+## -----------------------------------------------------------------------------
 decision_node <- DecisionNode$new("Programme")
 
-## ----chance-nodes-------------------------------------------------------------
+## -----------------------------------------------------------------------------
 chance_node_diet <- ChanceNode$new("Outcome")
 chance_node_exercise <- ChanceNode$new("Outcome")
 
-## ----leaf-nodes---------------------------------------------------------------
+## -----------------------------------------------------------------------------
 leaf_node_diet_no_stent <- LeafNode$new("No intervention")
 leaf_node_diet_stent <- LeafNode$new("Intervention")
 leaf_node_exercise_no_stent <- LeafNode$new("No intervention")
 leaf_node_exercise_stent <- LeafNode$new("Intervention")
 
-## ----actions------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 action_diet <- Action$new(
-  decision_node, chance_node_diet, cost = 50.0, label = "Diet"
+  decision_node, chance_node_diet, cost = cost_diet, label = "Diet"
 )
 action_exercise <- Action$new(
-  decision_node, chance_node_exercise, cost = 750.0, label = "Exercise"
+  decision_node, chance_node_exercise, cost = cost_exercise, label = "Exercise"
 )
 
-## ----reactions----------------------------------------------------------------
-p.diet <- 12L/68L
-p.exercise <- 18L/58L
+## -----------------------------------------------------------------------------
+s_diet <- 12L
+f_diet <- 56L
+s_exercise <- 18L
+f_exercise <- 40L
 
+## -----------------------------------------------------------------------------
+ip_diet <- f_diet / (s_diet + f_diet)
+ip_exercise <- f_exercise / (s_exercise + f_exercise)
+nnt <- 1.0 / (ip_diet - ip_exercise)
+
+## -----------------------------------------------------------------------------
+p_diet <- 1.0 - ip_diet
+p_exercise <- 1.0 - ip_exercise
+q_diet <- 1.0 - p_diet
+q_exercise <- 1.0 - p_exercise
+
+## -----------------------------------------------------------------------------
 reaction_diet_success <- Reaction$new(
-  chance_node_diet, leaf_node_diet_no_stent, 
-  p = p.diet, cost = 0.0, label = "Success")
+  chance_node_diet, leaf_node_diet_no_stent,
+  p = p_diet, cost = 0.0, label = "Success"
+)
 
 reaction_diet_failure <- Reaction$new(
-  chance_node_diet, leaf_node_diet_stent, 
-  p = 1.0 - p.diet, cost = 5000.0, label = "Failure")
+  chance_node_diet, leaf_node_diet_stent,
+  p = q_diet, cost = cost_stent, label = "Failure"
+)
 
 reaction_exercise_success <- Reaction$new(
-  chance_node_exercise, leaf_node_exercise_no_stent, 
-  p = p.exercise, cost = 0.0, label = "Success")
+  chance_node_exercise, leaf_node_exercise_no_stent,
+  p = p_exercise, cost = 0.0, label = "Success"
+)
 
 reaction_exercise_failure <- Reaction$new(
-  chance_node_exercise, leaf_node_exercise_stent, 
-  p = 1.0 - p.exercise, cost = 5000.0, label = "Failure")
-
-## ----decision-tree------------------------------------------------------------
-DT <- DecisionTree$new(
-  V = list(decision_node, 
-           chance_node_diet, 
-           chance_node_exercise, 
-           leaf_node_diet_no_stent, 
-           leaf_node_diet_stent, 
-           leaf_node_exercise_no_stent, 
-           leaf_node_exercise_stent),
-  E = list(action_diet,
-           action_exercise,
-           reaction_diet_success,
-           reaction_diet_failure,
-           reaction_exercise_success,
-           reaction_exercise_failure)
+  chance_node_exercise, leaf_node_exercise_stent,
+  p = q_exercise, cost = cost_stent, label = "Failure"
 )
 
-## ----decision-tree-draw-------------------------------------------------------
-DT$draw()
-
-## ----evaluate-----------------------------------------------------------------
-DT_evaluation <- DT$evaluate()
-knitr::kable(DT_evaluation, digits = 2L)
-
-## ----evaluate-by-path---------------------------------------------------------
-knitr::kable(DT$evaluate(by = "path"), digits=c(NA, NA, 3L, 2L, 3L, 3L, 3L, 1L))
-
-## ----lower-utility------------------------------------------------------------
-leaf_node_diet_stent_u <- LeafNode$new("Intervention", utility = 0.75)
-leaf_node_exercise_stent_u <- LeafNode$new("Intervention", utility = 0.75)
-
-reaction_diet_failure_u <- Reaction$new(
-  chance_node_diet, leaf_node_diet_stent_u, 
-  p = 1.0 - p.diet, cost = 5000.0, label = "Failure")
-
-reaction_exercise_failure_u <- Reaction$new(
-  chance_node_exercise, leaf_node_exercise_stent_u, 
-  p = 1.0 - p.exercise, cost = 5000.0, label = "Failure")
-
-DT_u <- DecisionTree$new(
-  V = list(decision_node, 
-           chance_node_diet, 
-           chance_node_exercise, 
-           leaf_node_diet_no_stent, 
-           leaf_node_diet_stent_u, 
-           leaf_node_exercise_no_stent, 
-           leaf_node_exercise_stent_u),
-  E = list(action_diet,
-           action_exercise,
-           reaction_diet_success,
-           reaction_diet_failure_u,
-           reaction_exercise_success,
-           reaction_exercise_failure_u)
+## -----------------------------------------------------------------------------
+dt <- DecisionTree$new(
+  V = list(
+    decision_node,
+    chance_node_diet,
+    chance_node_exercise,
+    leaf_node_diet_no_stent,
+    leaf_node_diet_stent,
+    leaf_node_exercise_no_stent,
+    leaf_node_exercise_stent
+  ),
+  E = list(
+    action_diet,
+    action_exercise,
+    reaction_diet_success,
+    reaction_diet_failure,
+    reaction_exercise_success,
+    reaction_exercise_failure
+  )
 )
 
-DT_u_evaluation <- DT_u$evaluate()
-knitr::kable(DT_u_evaluation, digits = 2L)
+## -----------------------------------------------------------------------------
+dt$draw()
 
-## ----icer---------------------------------------------------------------------
-ICER <- diff(DT_u_evaluation$Cost)/diff(DT_u_evaluation$Utility)
+## -----------------------------------------------------------------------------
+rs <- dt$evaluate()
 
-## ----beta-mod-vars------------------------------------------------------------
-# Diet: 12 successes / 68 total
-p.diet_beta <- BetaModVar$new(
-  alpha = 12L, beta = 68L - 12L, description = "P(diet)", units = ""
-)
-# Exercise: 18 successes / 58 total
-p.exercise_beta <- BetaModVar$new(
-  alpha = 18L, beta = 58L - 18L, description = "P(exercise)", units = ""
-)
+## -----------------------------------------------------------------------------
+knitr::kable(rs, digits = 2L)
 
-## ----expr-mod-vars------------------------------------------------------------
-q.diet_beta <- ExprModVar$new(
-  rlang::quo(1.0 - p.diet_beta), description = "1 - P(diet)", units = ""
-)
-q.exercise_beta <- ExprModVar$new(
-  rlang::quo(1.0 - p.exercise_beta), description = "1 - P(exercise)", units = ""
-)
+## -----------------------------------------------------------------------------
+o_netc_diet <- rs[[which(rs[, "Programme"] == "Diet"), "Cost"]]
+e_netc_diet <- cost_diet + q_diet * cost_stent
+o_netc_exercise <- rs[[which(rs[, "Programme"] == "Exercise"), "Cost"]]
+e_netc_exercise <- cost_exercise + q_exercise * cost_stent
+incc <- nnt * (cost_exercise - cost_diet)
+o_deltac <- o_netc_exercise - o_netc_diet
+e_deltac <- (incc - cost_stent) / nnt
+e_cost_threshold <- (cost_stent / nnt) + cost_diet
+nnt_threshold <- cost_stent / (cost_exercise - cost_diet)
+e_success_threshold <- 1.0 - (ip_diet - (1.0 / nnt_threshold))
 
-## ----const-vars---------------------------------------------------------------
+## -----------------------------------------------------------------------------
+rp <- dt$evaluate(by = "path")
+
+## -----------------------------------------------------------------------------
+knitr::kable(rp, digits = c(1L, NA, NA, 3L, 2L, 2L, 3L, 3L))
+
+## -----------------------------------------------------------------------------
+du_stent <- 0.05
+leaf_node_diet_stent$set_utility(1.0 - du_stent)
+leaf_node_exercise_stent$set_utility(1.0 - du_stent)
+rs <- dt$evaluate()
+
+## -----------------------------------------------------------------------------
+knitr::kable(rs, digits = c(1L, NA, 1L, 2L, 2L, 3L, 3L))
+
+## -----------------------------------------------------------------------------
+delta_c <- rs[[which(rs[, "Programme"] == "Exercise"), "Cost"]] -
+  rs[[which(rs[, "Programme"] == "Diet"), "Cost"]]
+delta_u <- rs[[which(rs[, "Programme"] == "Exercise"), "Utility"]] -
+  rs[[which(rs[, "Programme"] == "Diet"), "Utility"]]
+icer <- delta_c / delta_u
+
+## -----------------------------------------------------------------------------
+e_du <- du_stent * (p_exercise - p_diet)
+e_icer <- (e_netc_exercise - e_netc_diet) / e_du
+
+## -----------------------------------------------------------------------------
 cost_diet <- ConstModVar$new("Cost of diet programme", "GBP", 50.0)
 cost_exercise <- ConstModVar$new("Cost of exercise programme", "GBP", 750.0)
 cost_stent <- ConstModVar$new("Cost of stent intervention", "GBP", 5000.0)
 
-## ----DT-probabilistic---------------------------------------------------------
-
-action_diet_prob <- Action$new(
-  decision_node, chance_node_diet,
-  cost = cost_diet, label = "Diet")
-
-action_exercise_prob <- Action$new(
-  decision_node, chance_node_exercise, 
-  cost = cost_exercise, label = "Exercise")
-
-reaction_diet_success_prob <- Reaction$new(
-  chance_node_diet, leaf_node_diet_no_stent, 
-  p = p.diet_beta, cost = 0.0, label = "Success")
-
-reaction_diet_failure_prob <- Reaction$new(
-  chance_node_diet, leaf_node_diet_stent, 
-  p = q.diet_beta, cost = cost_stent, label = "Failure")
-
-reaction_exercise_success_prob <- Reaction$new(
-  chance_node_exercise, leaf_node_exercise_no_stent, 
-  p = p.exercise_beta, cost = 0.0, label = "Success")
-
-reaction_exercise_failure_prob <- Reaction$new(
-  chance_node_exercise, leaf_node_exercise_stent, 
-  p = q.exercise_beta, cost = cost_stent, label = "Failure")
-
-## ----decision-tree-prob-------------------------------------------------------
-DT_prob <- DecisionTree$new(
-  V = list(decision_node, 
-           chance_node_diet, 
-           chance_node_exercise, 
-           leaf_node_diet_no_stent, 
-           leaf_node_diet_stent, 
-           leaf_node_exercise_no_stent, 
-           leaf_node_exercise_stent),
-  E = list(action_diet_prob,
-           action_exercise_prob,
-           reaction_diet_success_prob,
-           reaction_diet_failure_prob,
-           reaction_exercise_success_prob,
-           reaction_exercise_failure_prob)
+## -----------------------------------------------------------------------------
+p_diet <- BetaModVar$new(
+  alpha = s_diet, beta = f_diet, description = "P(diet)", units = ""
+)
+p_exercise <- BetaModVar$new(
+  alpha = s_exercise, beta = f_exercise, description = "P(exercise)", units = ""
 )
 
-## ----modvar-table-------------------------------------------------------------
-knitr::kable(DT_prob$modvar_table(), digits = 3L)
+q_diet <- ExprModVar$new(
+  rlang::quo(1.0 - p_diet), description = "1 - P(diet)", units = ""
+)
+q_exercise <- ExprModVar$new(
+  rlang::quo(1.0 - p_exercise), description = "1 - P(exercise)", units = ""
+)
 
-## ----dt-evaluate-expected-----------------------------------------------------
-knitr::kable(DT_prob$evaluate(), digits = 2L)
+## -----------------------------------------------------------------------------
+action_diet$set_cost(cost_diet)
+action_exercise$set_cost(cost_exercise)
 
-## ----dt-evaluate-quantiles----------------------------------------------------
-knitr::kable(data.frame(
-  "Q2.5" = DT_prob$evaluate(setvars = "q2.5")$Cost,
-  "Q97.5" = DT_prob$evaluate(setvars = "q97.5")$Cost,
-  row.names = c("Diet", "Exercise")
-), digits = 2L)
+## -----------------------------------------------------------------------------
+reaction_diet_success$set_probability(p_diet)
 
-## ----dt-evaluate-random-------------------------------------------------------
+reaction_diet_failure$set_probability(q_diet)
+reaction_diet_failure$set_cost(cost_stent)
+
+reaction_exercise_success$set_probability(p_exercise)
+
+reaction_exercise_failure$set_probability(q_exercise)
+reaction_exercise_failure$set_cost(cost_stent)
+
+## -----------------------------------------------------------------------------
+knitr::kable(dt$modvar_table(), digits = 3L)
+
+## -----------------------------------------------------------------------------
+rs <- dt$evaluate()
+
+## -----------------------------------------------------------------------------
+knitr::kable(rs, digits = 2L)
+
+## -----------------------------------------------------------------------------
+rs_025 <- dt$evaluate(setvars = "q2.5")
+rs_975 <- dt$evaluate(setvars = "q97.5")
+
+## -----------------------------------------------------------------------------
 N <- 1000L
-DT_evaluation_random <- DT_prob$evaluate(setvars = "random", by = "run", N = N)
-plot(DT_evaluation_random$Cost.Diet, DT_evaluation_random$Cost.Exercise,
-     pch = 20L, 
-     xlab = "Cost Diet (GBP)", ylab = "Cost Exercise (GBP)", 
-     main = paste(N, "simulations of vascular disease prevention model"))
-abline(a = 0.0, b = 1.0, col = "red")
-knitr::kable(summary(DT_evaluation_random[, c(3L, 8L)]))
+rs <- dt$evaluate(setvars = "random", by = "run", N = N)
 
-## ----dt-difference------------------------------------------------------------
-DT_evaluation_random$Difference <- 
-  DT_evaluation_random$Cost.Diet - DT_evaluation_random$Cost.Exercise
-hist(DT_evaluation_random$Difference, 100L,  main = "Distribution of saving",
-     xlab = "Saving (GBP)")
-knitr::kable(DT_evaluation_random[1L : 10L, c(1L, 3L, 8L, 12L)], digits = 2L,
-             row.names = FALSE)
-CI <- quantile(DT_evaluation_random$Difference, c(0.025, 0.975))
+## -----------------------------------------------------------------------------
+knitr::kable(summary(rs[, c(3L, 8L)]))
 
-## ----threshold----------------------------------------------------------------
-cost_threshold <- DT_prob$threshold(
-  index = list(action_exercise_prob),
-  ref = list(action_diet_prob),
+## -----------------------------------------------------------------------------
+rs[, "Difference"] <- rs[, "Cost.Diet"] - rs[, "Cost.Exercise"]
+CI <- quantile(rs[, "Difference"], c(0.025, 0.975))
+
+## -----------------------------------------------------------------------------
+cost_threshold <- dt$threshold(
+  index = list(action_exercise),
+  ref = list(action_diet),
   outcome = "saving",
   mvd = cost_exercise$description(),
   a = 0.0, b = 5000.0, tol = 0.1
 )
 
-success_threshold <- DT_prob$threshold(
-  index = list(action_exercise_prob),
-  ref = list(action_diet_prob),
+success_threshold <- dt$threshold(
+  index = list(action_exercise),
+  ref = list(action_diet),
   outcome = "saving",
-  mvd = p.exercise_beta$description(),
+  mvd = p_exercise$description(),
   a = 0.0, b = 1.0, tol = 0.001
 )
 

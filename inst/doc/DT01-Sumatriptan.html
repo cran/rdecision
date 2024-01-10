@@ -373,10 +373,39 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <code>rdecision</code> package. It is based on the example given by
 Briggs<span class="citation"><sup>1</sup></span> (Box 2.3) which itself
 is based on a decision tree which compared oral Sumatriptan versus oral
-caffeine/Ergotamine for migraine<span class="citation"><sup>2</sup></span>.</p>
+caffeine/Ergotamine for migraine<span class="citation"><sup>2</sup></span>. In this vignette, we consider the
+problem from the perspective of a provincial health department.</p>
 </div>
 <div id="creating-the-model" class="section level1">
 <h1>Creating the model</h1>
+<div id="model-variables" class="section level2">
+<h2>Model variables</h2>
+<p>The following code defines the variables for cost, utility and effect
+that will be used in the model. There are 14 variables in total; 4
+costs, 4 utilities and 6 probabilities.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time horizon</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>th <span class="ot">&lt;-</span> <span class="fu">as.difftime</span>(24L, <span class="at">units =</span> <span class="st">&quot;hours&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># model variables for cost</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>c_sumatriptan <span class="ot">&lt;-</span> <span class="fl">16.10</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>c_caffeine <span class="ot">&lt;-</span> <span class="fl">1.32</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>c_ed <span class="ot">&lt;-</span> <span class="fl">63.16</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>c_admission <span class="ot">&lt;-</span> <span class="fl">1093.0</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># model variables for utility</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>u_relief_norecurrence <span class="ot">&lt;-</span> <span class="fl">1.0</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>u_relief_recurrence <span class="ot">&lt;-</span> <span class="fl">0.9</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>u_norelief_endures <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">0.30</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>u_norelief_er <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co"># model variables for effect</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>p_sumatriptan_recurrence <span class="ot">&lt;-</span> <span class="fl">0.594</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>p_caffeine_recurrence <span class="ot">&lt;-</span> <span class="fl">0.703</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>p_sumatriptan_relief <span class="ot">&lt;-</span> <span class="fl">0.558</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>p_caffeine_relief <span class="ot">&lt;-</span> <span class="fl">0.379</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>p_er <span class="ot">&lt;-</span> <span class="fl">0.08</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>p_admitted <span class="ot">&lt;-</span> <span class="fl">0.002</span></span></code></pre></div>
+</div>
 <div id="constructing-the-tree" class="section level2">
 <h2>Constructing the tree</h2>
 <p>The following code constructs the decision tree. In the formulation
@@ -386,85 +415,82 @@ single root and a unique path from the root to each leaf node. Decision
 trees comprise three types of node: decision, chance and leaf nodes and
 two types of edge: actions (whose sources are decision nodes) and
 reactions (whose sources are chance nodes), <a href="#tree-diagram">see
-figure</a>.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time horizon</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>th <span class="ot">&lt;-</span> <span class="fu">as.difftime</span>(48L, <span class="at">units=</span><span class="st">&quot;hours&quot;</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># model variables for cost</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>c.sumatriptan <span class="ot">&lt;-</span> <span class="fl">16.10</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>c.caffeine <span class="ot">&lt;-</span> <span class="fl">1.32</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>c.ED <span class="ot">&lt;-</span> <span class="fl">63.16</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>c.admission <span class="ot">&lt;-</span> <span class="fl">1093.0</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Sumatriptan branch</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>ta <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;A&quot;</span>, <span class="at">utility=</span><span class="fl">1.0</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;B&quot;</span>, <span class="at">utility=</span><span class="fl">0.9</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>c3 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>e1 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c3, ta, <span class="at">p=</span><span class="fl">0.594</span>, <span class="at">label=</span><span class="st">&quot;No recurrence&quot;</span>)</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>e2 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c3, tb, <span class="at">p=</span><span class="fl">0.406</span>, <span class="at">cost=</span>c.sumatriptan, </span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                   <span class="at">label=</span><span class="st">&quot;Relieved 2nd dose&quot;</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>td <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;D&quot;</span>, <span class="at">utility=</span><span class="fl">0.1</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>te <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;E&quot;</span>, <span class="at">utility=</span><span class="sc">-</span><span class="fl">0.3</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>c7 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>e3 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c7, td, <span class="at">p=</span><span class="fl">0.998</span>, <span class="at">label=</span><span class="st">&quot;Relief&quot;</span>)</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>e4 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c7, te, <span class="at">p=</span><span class="fl">0.002</span>, <span class="at">cost=</span>c.admission, <span class="at">label=</span><span class="st">&quot;Hospitalization&quot;</span>)</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>tc <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;C&quot;</span>, <span class="at">utility=</span><span class="sc">-</span><span class="fl">0.3</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>c4 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>e5 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c4, tc, <span class="at">p=</span><span class="fl">0.920</span>, <span class="at">label=</span><span class="st">&quot;Endures attack&quot;</span>)</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>e6 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c4, c7, <span class="at">p=</span><span class="fl">0.080</span>, <span class="at">cost=</span>c.ED, <span class="at">label=</span><span class="st">&quot;ED&quot;</span>)</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>c1 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>e7 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c1, c3, <span class="at">p=</span><span class="fl">0.558</span>, <span class="at">label=</span><span class="st">&quot;Relief&quot;</span>)</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>e8 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c1, c4, <span class="at">p=</span><span class="fl">0.442</span>, <span class="at">label=</span><span class="st">&quot;No relief&quot;</span>)</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Caffeine/Ergotamine branch</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>tf <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;F&quot;</span>, <span class="at">utility=</span><span class="fl">1.0</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>tg <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;G&quot;</span>, <span class="at">utility=</span><span class="fl">0.9</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>c5 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>e9 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c5, tf, <span class="at">p=</span><span class="fl">0.703</span>, <span class="at">label=</span><span class="st">&quot;No recurrence&quot;</span>)</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>e10 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c5, tg, <span class="at">p=</span><span class="fl">0.297</span>, <span class="at">cost=</span>c.caffeine, </span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label=</span><span class="st">&quot;Relieved 2nd dose&quot;</span>)</span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>ti <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;I&quot;</span>, <span class="at">utility=</span><span class="fl">0.1</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>tj <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;J&quot;</span>, <span class="at">utility=</span><span class="sc">-</span><span class="fl">0.3</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>c8 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>e11 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c8, ti, <span class="at">p=</span><span class="fl">0.998</span>, <span class="at">label=</span><span class="st">&quot;Relief&quot;</span>)</span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>e12 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c8, tj, <span class="at">p=</span><span class="fl">0.002</span>, <span class="at">cost=</span>c.admission, <span class="at">label=</span><span class="st">&quot;Hospitalization&quot;</span>)</span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>th <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;H&quot;</span>, <span class="at">utility=</span><span class="sc">-</span><span class="fl">0.3</span>, <span class="at">interval=</span>th)</span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>c6 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>e13 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c6, th, <span class="at">p=</span><span class="fl">0.920</span>, <span class="at">label=</span><span class="st">&quot;Endures attack&quot;</span>)</span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>e14 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c6, c8, <span class="at">p=</span><span class="fl">0.080</span>, <span class="at">cost=</span>c.ED, <span class="at">label=</span><span class="st">&quot;ED&quot;</span>)</span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>c2 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>e15 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c2, c5, <span class="at">p=</span><span class="fl">0.379</span>, <span class="at">label=</span><span class="st">&quot;Relief&quot;</span>)</span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>e16 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c2, c6, <span class="at">p=</span><span class="fl">0.621</span>, <span class="at">label=</span><span class="st">&quot;No relief&quot;</span>)</span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co"># decision node</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>d1 <span class="ot">&lt;-</span> DecisionNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;d1&quot;</span>)</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>e17 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c1, <span class="at">cost=</span>c.sumatriptan, <span class="at">label=</span><span class="st">&quot;Sumatriptan&quot;</span>)</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>e18 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c2, <span class="at">cost=</span>c.caffeine, <span class="at">label=</span><span class="st">&quot;Caffeine-Ergotamine&quot;</span>)</span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co"># create lists of nodes and edges</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>  d1, c1, c2, c3, c4, c5, c6, c7, c8,</span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>  ta, tb, tc, td, te, tf, tg, th, ti, tj</span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>  e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, </span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>  e17, e18</span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co"># tree</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>DT <span class="ot">&lt;-</span> DecisionTree<span class="sc">$</span><span class="fu">new</span>(V,E)</span></code></pre></div>
-</div>
-<div id="tree-diagram" class="section level2">
-<h2>Tree diagram</h2>
+Figure 1</a>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Sumatriptan branch</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ta <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;A&quot;</span>, <span class="at">utility =</span> u_relief_norecurrence, <span class="at">interval =</span> th)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>tb <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;B&quot;</span>, <span class="at">utility =</span> u_relief_recurrence, <span class="at">interval =</span> th)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>c3 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>e1 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  c3, ta, <span class="at">p =</span> p_sumatriptan_recurrence, <span class="at">label =</span> <span class="st">&quot;No recurrence&quot;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>e2 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  c3, tb, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_sumatriptan_recurrence, <span class="at">cost =</span> c_sumatriptan,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">label =</span> <span class="st">&quot;Relieved 2nd dose&quot;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>td <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;D&quot;</span>, <span class="at">utility =</span> u_norelief_er, <span class="at">interval =</span> th)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>te <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;E&quot;</span>, <span class="at">utility =</span> u_norelief_endures, <span class="at">interval =</span> th)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>c7 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>e3 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c7, td, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_admitted, <span class="at">label =</span> <span class="st">&quot;Relief&quot;</span>)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>e4 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  c7, te, <span class="at">p =</span> p_admitted, <span class="at">cost =</span> c_admission, <span class="at">label =</span> <span class="st">&quot;Hospitalization&quot;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>tc <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;C&quot;</span>, <span class="at">utility =</span> u_norelief_endures, <span class="at">interval =</span> th)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>c4 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>e5 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c4, tc, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_er, <span class="at">label =</span> <span class="st">&quot;Endures attack&quot;</span>)</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>e6 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c4, c7, <span class="at">p =</span> p_er, <span class="at">cost =</span> c_ed, <span class="at">label =</span> <span class="st">&quot;ER&quot;</span>)</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>c1 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>e7 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c1, c3, <span class="at">p =</span> p_sumatriptan_relief, <span class="at">label =</span> <span class="st">&quot;Relief&quot;</span>)</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>e8 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c1, c4, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_sumatriptan_relief, <span class="at">label =</span> <span class="st">&quot;No relief&quot;</span>)</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Caffeine/Ergotamine branch</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>tf <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;F&quot;</span>, <span class="at">utility =</span> u_relief_norecurrence, <span class="at">interval =</span> th)</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>tg <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;G&quot;</span>, <span class="at">utility =</span> u_relief_recurrence, <span class="at">interval =</span> th)</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>c5 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>e9 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c5, tf, <span class="at">p =</span> p_caffeine_recurrence, <span class="at">label =</span> <span class="st">&quot;No recurrence&quot;</span>)</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>e10 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>  c5, tg, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_caffeine_recurrence, <span class="at">cost =</span> c_caffeine,</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">label =</span> <span class="st">&quot;Relieved 2nd dose&quot;</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>ti <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;I&quot;</span>, <span class="at">utility =</span> u_norelief_er, <span class="at">interval =</span> th)</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>tj <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;J&quot;</span>, <span class="at">utility =</span> u_norelief_endures, <span class="at">interval =</span> th)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>c8 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>e11 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c8, ti, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_admitted, <span class="at">label =</span> <span class="st">&quot;Relief&quot;</span>)</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>e12 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>  c8, tj, <span class="at">p =</span> p_admitted, <span class="at">cost =</span> c_admission, <span class="at">label =</span> <span class="st">&quot;Hospitalization&quot;</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>th <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;H&quot;</span>, <span class="at">utility =</span> u_norelief_endures, <span class="at">interval =</span> th)</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>c6 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>e13 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c6, th, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_er, <span class="at">label =</span> <span class="st">&quot;Endures attack&quot;</span>)</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>e14 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c6, c8, <span class="at">p =</span> p_er, <span class="at">cost =</span> c_ed, <span class="at">label =</span> <span class="st">&quot;ER&quot;</span>)</span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>c2 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>e15 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c2, c5, <span class="at">p =</span> p_caffeine_relief, <span class="at">label =</span> <span class="st">&quot;Relief&quot;</span>)</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>e16 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c2, c6, <span class="at">p =</span> <span class="fl">1.0</span> <span class="sc">-</span> p_caffeine_relief, <span class="at">label =</span> <span class="st">&quot;No relief&quot;</span>)</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a><span class="co"># decision node</span></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>d1 <span class="ot">&lt;-</span> DecisionNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;d1&quot;</span>)</span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>e17 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c1, <span class="at">cost =</span> c_sumatriptan, <span class="at">label =</span> <span class="st">&quot;Sumatriptan&quot;</span>)</span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>e18 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c2, <span class="at">cost =</span> c_caffeine, <span class="at">label =</span> <span class="st">&quot;Caffeine-Ergotamine&quot;</span>)</span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a><span class="co"># create lists of nodes and edges</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>  d1, c1, c2, c3, c4, c5, c6, c7, c8,</span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>  ta, tb, tc, td, te, tf, tg, th, ti, tj</span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>  e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16,</span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>  e17, e18</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a><span class="co"># tree</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>DT <span class="ot">&lt;-</span> DecisionTree<span class="sc">$</span><span class="fu">new</span>(V, E)</span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="data:image/png;base64,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" alt="Decision tree for the Sumatriptan model" />
+<img src="data:image/png;base64,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" alt="Figure 1. Decision tree for the Sumatriptan model" />
 <p class="caption">
-Decision tree for the Sumatriptan model
+Figure 1. Decision tree for the Sumatriptan model
 </p>
 </div>
 </div>
@@ -477,109 +503,91 @@ model. A strategy is a unanimous prescription of the actions at each
 decision node. In this example there is a single decision node with two
 actions, and the strategies are simply the two forms of treatment to be
 compared. More complex decision trees are also possible.</p>
-<p>The paths traversable in each strategy can be evaluated individually
-using the method <code>evaluate(by=&quot;path&quot;)</code>. In
+<p>The paths traversed in each strategy can be evaluated individually
+using the method <code>evaluate(by = &quot;path&quot;)</code>. In
 <code>rdecision</code> a strategy is defined as a set of action edges
 with one action edge per decision node. It is necessary to use the
-option <code>by=&quot;path&quot;</code> only if information about each pathway is
-required; normally it is sufficient to call <code>evaluate</code> which
-will automatically aggregate the evaluation by strategy.</p>
+option <code>by = &quot;path&quot;</code> only if information about each pathway
+is required; normally it is sufficient to call <code>evaluate</code>
+which will automatically aggregate the evaluation by strategy.</p>
 </div>
 <div id="model-results" class="section level1">
 <h1>Model results</h1>
-<p>The evaluation of each pathway, for each strategy, yields the
-following table:</p>
+<div id="base-case" class="section level2">
+<h2>Base case</h2>
+<p>The evaluation of each pathway, for each strategy, is done as
+follows:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ep <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>(<span class="at">by =</span> <span class="st">&quot;path&quot;</span>)</span></code></pre></div>
+<p>and yields the following table:</p>
 <table>
 <thead>
 <tr class="header">
 <th align="left">Leaf</th>
-<th align="left">d1</th>
 <th align="right">Probability</th>
 <th align="right">Cost</th>
 <th align="right">Utility</th>
-<th align="right">QALY</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">A</td>
-<td align="left">Sumatriptan</td>
-<td align="right">0.33</td>
-<td align="right">5.34</td>
-<td align="right">0.33</td>
-<td align="right">0.0018</td>
-</tr>
-<tr class="even">
-<td align="left">B</td>
-<td align="left">Sumatriptan</td>
-<td align="right">0.23</td>
-<td align="right">7.29</td>
-<td align="right">0.20</td>
-<td align="right">0.0011</td>
-</tr>
-<tr class="odd">
-<td align="left">C</td>
-<td align="left">Sumatriptan</td>
-<td align="right">0.41</td>
-<td align="right">6.55</td>
-<td align="right">-0.12</td>
-<td align="right">-0.0007</td>
-</tr>
-<tr class="even">
-<td align="left">D</td>
-<td align="left">Sumatriptan</td>
-<td align="right">0.04</td>
-<td align="right">2.80</td>
-<td align="right">0.00</td>
-<td align="right">0.0000</td>
-</tr>
-<tr class="odd">
-<td align="left">E</td>
-<td align="left">Sumatriptan</td>
-<td align="right">0.00</td>
-<td align="right">0.08</td>
-<td align="right">0.00</td>
-<td align="right">0.0000</td>
-</tr>
-<tr class="even">
 <td align="left">F</td>
-<td align="left">Caffeine-Ergotamine</td>
-<td align="right">0.27</td>
+<td align="right">0.2664</td>
 <td align="right">0.35</td>
-<td align="right">0.27</td>
-<td align="right">0.0015</td>
+<td align="right">0.26644</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">G</td>
-<td align="left">Caffeine-Ergotamine</td>
-<td align="right">0.11</td>
+<td align="right">0.1126</td>
 <td align="right">0.30</td>
-<td align="right">0.10</td>
-<td align="right">0.0006</td>
-</tr>
-<tr class="even">
-<td align="left">H</td>
-<td align="left">Caffeine-Ergotamine</td>
-<td align="right">0.57</td>
-<td align="right">0.75</td>
-<td align="right">-0.17</td>
-<td align="right">-0.0009</td>
+<td align="right">0.10131</td>
 </tr>
 <tr class="odd">
-<td align="left">I</td>
-<td align="left">Caffeine-Ergotamine</td>
-<td align="right">0.05</td>
-<td align="right">3.20</td>
-<td align="right">0.00</td>
-<td align="right">0.0000</td>
+<td align="left">H</td>
+<td align="right">0.5713</td>
+<td align="right">0.75</td>
+<td align="right">-0.17140</td>
 </tr>
 <tr class="even">
+<td align="left">I</td>
+<td align="right">0.0496</td>
+<td align="right">3.20</td>
+<td align="right">0.00496</td>
+</tr>
+<tr class="odd">
 <td align="left">J</td>
-<td align="left">Caffeine-Ergotamine</td>
-<td align="right">0.00</td>
+<td align="right">0.0001</td>
 <td align="right">0.12</td>
-<td align="right">0.00</td>
-<td align="right">0.0000</td>
+<td align="right">-0.00003</td>
+</tr>
+<tr class="even">
+<td align="left">A</td>
+<td align="right">0.3315</td>
+<td align="right">5.34</td>
+<td align="right">0.33145</td>
+</tr>
+<tr class="odd">
+<td align="left">B</td>
+<td align="right">0.2265</td>
+<td align="right">7.29</td>
+<td align="right">0.20389</td>
+</tr>
+<tr class="even">
+<td align="left">C</td>
+<td align="right">0.4066</td>
+<td align="right">6.55</td>
+<td align="right">-0.12199</td>
+</tr>
+<tr class="odd">
+<td align="left">D</td>
+<td align="right">0.0353</td>
+<td align="right">2.80</td>
+<td align="right">0.00353</td>
+</tr>
+<tr class="even">
+<td align="left">E</td>
+<td align="right">0.0001</td>
+<td align="right">0.08</td>
+<td align="right">-0.00002</td>
 </tr>
 </tbody>
 </table>
@@ -587,9 +595,10 @@ following table:</p>
 cost, utility and QALY (utility multiplied by the time horizon of the
 model) for each choice can be calculated from the table above, or by
 invoking the <code>evaluate</code> method of a decision tree object with
-the default parameter <code>by=&quot;strategy&quot;</code>. This gives the
-following result, consistent with that reported by Evans <em>et
-al</em><span class="citation"><sup>2</sup></span>.</p>
+the default parameter <code>by = &quot;strategy&quot;</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>es <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>()</span></code></pre></div>
+<p>This gives the following result, consistent with that reported by
+Evans <em>et al</em><span class="citation"><sup>2</sup></span>.</p>
 <table>
 <thead>
 <tr class="header">
@@ -603,31 +612,116 @@ al</em><span class="citation"><sup>2</sup></span>.</p>
 <tr class="odd">
 <td align="left">Caffeine-Ergotamine</td>
 <td align="right">4.71</td>
-<td align="right">0.20128</td>
-<td align="right">0.00110</td>
+<td align="right">0.2013</td>
+<td align="right">0.0006</td>
 </tr>
 <tr class="even">
 <td align="left">Sumatriptan</td>
 <td align="right">22.06</td>
-<td align="right">0.41686</td>
-<td align="right">0.00228</td>
+<td align="right">0.4169</td>
+<td align="right">0.0011</td>
 </tr>
 </tbody>
 </table>
+<p>The incremental cost was $Can 17.34 (22.06 - 4.71) and the
+incremental utility was 0.22 (0.42 - 0.2). Because the time horizon of
+the model was 1 day, the incremental QALYs was the incremental annual
+utility divided by 365, and the ICER was therefore equal to 29,383
+$Can/QALY, within 5% of the published estimate (29,366 $Can/QALY).</p>
+</div>
+<div id="univariate-sensitivity-analysis" class="section level2">
+<h2>Univariate sensitivity analysis</h2>
+<p>Evans <em>et al</em><span class="citation"><sup>2</sup></span>
+reported the ICER for various alternative values of input variables. For
+example (their Table VIII), they reported that the ICER was 60,839
+$Can/QALY for a relative increase in effectiveness of 9.1% (i.e., when
+the relief from Sumatriptan was 9.1 percentage points greater than that
+of Caffeine-Ergotamine) and 18,950 $Can/QALY for a relative increase in
+effectiveness of 26.8% (these being the lower and upper confidence
+intervals of the estimate of effectiveness from meta-analysis).</p>
+<p>To calculate these ICERs, we set the value of the model variable
+<code>p_sumatriptan_relief</code>, and re-evaluate the model. The lower
+range of ICER (with the greater relative increase in effectiveness) is
+calculated as follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>p_sumatriptan_relief <span class="ot">&lt;-</span> p_caffeine_relief <span class="sc">+</span> <span class="fl">0.268</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>e7<span class="sc">$</span><span class="fu">set_probability</span>(p_sumatriptan_relief)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>e8<span class="sc">$</span><span class="fu">set_probability</span>(<span class="fl">1.0</span> <span class="sc">-</span> p_sumatriptan_relief)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>es <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>()</span></code></pre></div>
+<p>This yields the following table, from which the ICER is calculated as
+19,632 $Can/QALY, close to the published estimate of 18,950
+$Can/QALY.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">d1</th>
+<th align="right">Cost</th>
+<th align="right">Utility</th>
+<th align="right">QALY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Caffeine-Ergotamine</td>
+<td align="right">4.71</td>
+<td align="right">0.2013</td>
+<td align="right">0.0006</td>
+</tr>
+<tr class="even">
+<td align="left">Sumatriptan</td>
+<td align="right">22.17</td>
+<td align="right">0.5261</td>
+<td align="right">0.0014</td>
+</tr>
+</tbody>
+</table>
+<p>The upper range of ICER (with the smaller relative increase in
+effectiveness) is calculated as follows:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>p_sumatriptan_relief <span class="ot">&lt;-</span> p_caffeine_relief <span class="sc">+</span> <span class="fl">0.091</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>e7<span class="sc">$</span><span class="fu">set_probability</span>(p_sumatriptan_relief)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>e8<span class="sc">$</span><span class="fu">set_probability</span>(<span class="fl">1.0</span> <span class="sc">-</span> p_sumatriptan_relief)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>es <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>()</span></code></pre></div>
+<p>This yields the following table, from which the ICER is calculated as
+58,498 $Can/QALY, close to the published estimate of 60,839
+$Can/QALY.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">d1</th>
+<th align="right">Cost</th>
+<th align="right">Utility</th>
+<th align="right">QALY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Caffeine-Ergotamine</td>
+<td align="right">4.71</td>
+<td align="right">0.2013</td>
+<td align="right">0.0006</td>
+</tr>
+<tr class="even">
+<td align="left">Sumatriptan</td>
+<td align="right">21.94</td>
+<td align="right">0.3088</td>
+<td align="right">0.0008</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div id="references" class="section level1 unnumbered">
 <h1 class="unnumbered">References</h1>
 <div id="refs" class="references csl-bib-body" line-spacing="2">
 <div id="ref-briggs2006" class="csl-entry">
 <div class="csl-left-margin">1. </div><div class="csl-right-inline">Briggs, A., Claxton, K. &amp; Sculpher, M.
-<em>Decision modelling for health economic evaluation</em>.
-(<span>Oxford University Press</span>, 2006).</div>
+<em>Decision modelling for health economic evaluation</em>. (Oxford
+University Press, 2006).</div>
 </div>
 <div id="ref-evans1997" class="csl-entry">
 <div class="csl-left-margin">2. </div><div class="csl-right-inline">Evans, K. W., Boan, J. A., Evans, J. L. &amp;
-Shuaib, A. Economic evaluation of oral <span>Sumatriptan</span> compared
-with oral <span>Caffeine</span>/<span>Ergotamine</span> for migraine.
-<em>Pharmacoeconomics</em> <strong>12,</strong> 565–577 (1997).</div>
+Shuaib, A. Economic evaluation of oral sumatriptan compared with oral
+caffeine/ergotamine for migraine. <em>Pharmacoeconomics</em>
+<strong>12,</strong> 565–577 (1997).</div>
 </div>
 </div>
 </div>

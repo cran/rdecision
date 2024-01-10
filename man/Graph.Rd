@@ -8,17 +8,17 @@
 An R6 class to represent a graph (from discrete mathematics).
 }
 \details{
-Encapsulates and provides methods for computation and checking of 
-undirected graphs. Graphs are systems of vertices connected in pairs by 
+Encapsulates and provides methods for computation and checking of
+undirected graphs. Graphs are systems of vertices connected in pairs by
 edges. A base class.
 }
 \references{
-{ 
+{
   Gansner ER, Koutsofios E, North SC, Vo K-P. A technique for drawing
   directed graphs. \emph{IEEE Transactions on Software Engineering},
   1993;\bold{19}:214–30, \doi{10.1109/32.221135}.
 
-  Gross JL, Yellen J, Zhang P. Handbook of Graph Theory. Second edition, 
+  Gross JL, Yellen J, Zhang P. Handbook of Graph Theory. Second edition,
   Chapman and Hall/CRC.; 2013, \doi{10.1201/b16132}
 }
 }
@@ -31,14 +31,18 @@ Andrew Sims \email{andrew.sims@newcastle.ac.uk}
 \item \href{#method-Graph-new}{\code{Graph$new()}}
 \item \href{#method-Graph-order}{\code{Graph$order()}}
 \item \href{#method-Graph-size}{\code{Graph$size()}}
+\item \href{#method-Graph-vertexes}{\code{Graph$vertexes()}}
 \item \href{#method-Graph-vertex_along}{\code{Graph$vertex_along()}}
 \item \href{#method-Graph-vertex_index}{\code{Graph$vertex_index()}}
 \item \href{#method-Graph-vertex_at}{\code{Graph$vertex_at()}}
 \item \href{#method-Graph-has_vertex}{\code{Graph$has_vertex()}}
+\item \href{#method-Graph-vertex_label}{\code{Graph$vertex_label()}}
+\item \href{#method-Graph-edges}{\code{Graph$edges()}}
 \item \href{#method-Graph-edge_along}{\code{Graph$edge_along()}}
 \item \href{#method-Graph-edge_index}{\code{Graph$edge_index()}}
 \item \href{#method-Graph-edge_at}{\code{Graph$edge_at()}}
 \item \href{#method-Graph-has_edge}{\code{Graph$has_edge()}}
+\item \href{#method-Graph-edge_label}{\code{Graph$edge_label()}}
 \item \href{#method-Graph-graph_adjacency_matrix}{\code{Graph$graph_adjacency_matrix()}}
 \item \href{#method-Graph-is_simple}{\code{Graph$is_simple()}}
 \item \href{#method-Graph-is_connected}{\code{Graph$is_connected()}}
@@ -54,7 +58,7 @@ Andrew Sims \email{andrew.sims@newcastle.ac.uk}
 \if{html}{\out{<a id="method-Graph-new"></a>}}
 \if{latex}{\out{\hypertarget{method-Graph-new}{}}}
 \subsection{Method \code{new()}}{
-Create a new \code{Graph} object from sets of nodes 
+Create a new \code{Graph} object from sets of nodes
 and edges.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Graph$new(V, E)}\if{html}{\out{</div>}}
@@ -63,9 +67,9 @@ and edges.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{V}}{A list of Nodes.}
+\item{\code{V}}{An unordered set of Nodes, as a list.}
 
-\item{\code{E}}{A list of Edges.}
+\item{\code{E}}{An unordered set of Edges, as a list.}
 }
 \if{html}{\out{</div>}}
 }
@@ -100,6 +104,23 @@ Size of the graph (integer).
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Graph-vertexes"></a>}}
+\if{latex}{\out{\hypertarget{method-Graph-vertexes}{}}}
+\subsection{Method \code{vertexes()}}{
+A list of all the Node objects in the graph.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Graph$vertexes()}\if{html}{\out{</div>}}
+}
+
+\subsection{Details}{
+The list of Node objects is returned in the same order as their
+indexes understood by \code{vertex_index}, \code{vertex_at} and
+\code{vertex_along}, which is not necessarily the same order in which
+they were supplied in the \code{V} argument to \code{new}.
+}
+
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Graph-vertex_along"></a>}}
 \if{latex}{\out{\hypertarget{method-Graph-vertex_along}{}}}
 \subsection{Method \code{vertex_along()}}{
@@ -110,12 +131,16 @@ Sequence of vertex indices.
 
 \subsection{Details}{
 Similar to \code{base::seq_along}, this function provides
-the indices of the vertices in the graph. It is intended for use by 
+the indices of the vertices in the graph. It is intended for use by
 graph algorithms which iterate vertices.
 }
 
 \subsection{Returns}{
-A numeric vector.
+A numeric vector of indices from 1 to the order of the graph.
+The vertex at index \eqn{i} is not guaranteed to be the same vertex at
+\code{V[[i]]} of the argument \code{V} to \code{new} (i.e., the order in
+which the vertices are stored internally within the class may differ
+from the order in which they were supplied).
 }
 }
 \if{html}{\out{<hr>}}
@@ -130,16 +155,15 @@ Find the index of a vertex in the graph.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{v}}{A vertex.}
+\item{\code{v}}{A vertex, or list of vertexes.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Index of \var{v}. The vertices are normally stored in the same
-order they are specified in \code{new}, but this cannot be guaranteed. 
-This function returns the same index as used in the adjacency matrix and 
-\code{NA} if \var{v} is not a vertex, or is a vertex that is not in 
-the graph.
+Index of \var{v}. The index of vertex \code{v} is the one
+used internally to the class object, which is not necessarily the same as
+the order of vertices in the \code{V} argument of \code{new}. \code{NA}
+if \var{v} is not a vertex, or is a vertex that is not in the graph.
 }
 }
 \if{html}{\out{<hr>}}
@@ -148,30 +172,32 @@ the graph.
 \subsection{Method \code{vertex_at()}}{
 Find the vertex at a given index.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Graph$vertex_at(index)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Graph$vertex_at(index, as_list = FALSE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{index}}{Index of a vertex in the graph, as an integer. The indices
-of the vertices normally run from 1 to the order of the graph, and are
-normally in the same sequence as the list of vertices, \var{V}, supplied
-when the graph was created. However, these assumptions are not
-guaranteed to hold for future versions of the package, and it is
-recommended to supply an index value that has been provided by another
-class function such as \code{vertex_index}, \code{vertex_along} and
-\code{graph_adjacency_matrix}.}
+\item{\code{index}}{Index of vertex in the graph, as an integer, or vector of
+integers.}
+
+\item{\code{as_list}}{Boolean. If TRUE the method returns list of Nodes,
+even if the length of \code{index} is 1.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Details}{
 The inverse of function \code{vertex_index}. The function will
-raise an abort signal if the supplied index is not a vertex.
+raise an abort signal if all the supplied indexes are not vertexes. The
+function is vectorized, but for historical compatibility the return
+object is a single \code{Node} if \code{index} is a scalar. The
+return object can be guaranteed to be a list if \code{as_list} is set.
 }
 
 \subsection{Returns}{
-the node (vertex) with the specified index.
+Node at \code{index} if \code{index} is a scalar, a list of Nodes
+at the values of \code{index} if \code{index} is a vector, or an empty
+list if index is an empty array.
 }
 }
 \if{html}{\out{<hr>}}
@@ -195,6 +221,43 @@ TRUE if v is an element of V(G).
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Graph-vertex_label"></a>}}
+\if{latex}{\out{\hypertarget{method-Graph-vertex_label}{}}}
+\subsection{Method \code{vertex_label()}}{
+Find label of vertexes at index i.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Graph$vertex_label(iv)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{iv}}{Index of vertex, or vector of indexes.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Label(s) of vertex at index i
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Graph-edges"></a>}}
+\if{latex}{\out{\hypertarget{method-Graph-edges}{}}}
+\subsection{Method \code{edges()}}{
+A list of all the Edge objects in the graph.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Graph$edges()}\if{html}{\out{</div>}}
+}
+
+\subsection{Details}{
+The list of Edge objects is returned in the same order as their
+indexes understood by \code{edge_index}, \code{edge_at} and
+\code{edge_along}, which is not necessarily the same order in which they
+were supplied in the \code{E} argument to \code{new}.
+}
+
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Graph-edge_along"></a>}}
 \if{latex}{\out{\hypertarget{method-Graph-edge_along}{}}}
 \subsection{Method \code{edge_along()}}{
@@ -205,12 +268,17 @@ Sequence of edge indices.
 
 \subsection{Details}{
 Similar to \code{base::seq_along}, this function provides
-the indices of the  edges in the graph. It is intended for use by 
-graph algorithms which iterate edges.
+the indices of the edges in the graph. It is intended for use by
+graph algorithms which iterate edges. It is equivalent to
+\code{seq_along(g$edges())}, where \code{g} is a graph.
 }
 
 \subsection{Returns}{
-A numeric vector.
+A numeric vector of indices from 1 to the size of the graph.
+The edge at index \eqn{i} is not guaranteed to be the same edge at
+\code{E[[i]]} of the argument \code{E} to \code{new} (i.e., the order in
+which the edges are stored internally within the class may differ
+from the order in which they were supplied).
 }
 }
 \if{html}{\out{<hr>}}
@@ -225,15 +293,19 @@ Find the index of an edge in a graph.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{e}}{Subject edge.}
+\item{\code{e}}{An edge object, or list of edge objects.}
 }
 \if{html}{\out{</div>}}
 }
+\subsection{Details}{
+The index of edge \code{e} is the one used internally to the
+class object, which is not necessarily the same as the
+order of edges in the \code{E} argument of \code{new}.
+}
+
 \subsection{Returns}{
-Index of \code{e}. The edges are normally stored in the same
-order they are specified in \code{new}, but this cannot be guaranteed. 
-This function returns the same index returned in other functions and 
-\code{NA} if the edge is not in the graph.
+Index of \code{e}. \code{NA} if \var{e} is not an edge, or is an
+edge that is not in the graph.
 }
 }
 \if{html}{\out{<hr>}}
@@ -242,36 +314,37 @@ This function returns the same index returned in other functions and
 \subsection{Method \code{edge_at()}}{
 Find the edge at a given index.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Graph$edge_at(index)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Graph$edge_at(index, as_list = FALSE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{index}}{Index of a edge in the graph, as an integer. The indices
-of the edges normally run from 1 to the size of the graph, and are
-normally in the same sequence as the list of edges, \var{E}, supplied
-when the graph was created. However, these assumptions are not
-guaranteed to hold for future versions of the package, and it is
-recommended to supply an index value that has been provided by another
-class function such as \code{edge_index} and \code{edge_along}.}
+\item{\code{index}}{Index of edge in the graph, as an integer, vector of
+integers, or list of integers.}
+
+\item{\code{as_list}}{Boolean. If TRUE the method returns list of Edges,
+even if the length of \code{index} is 1.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Details}{
-The inverse of function \code{dge_index}. The function will
-raise an abort signal if the supplied index is not an edge.
+The inverse of function \code{edge_index}. The function will
+raise an abort signal if the supplied index is not an edge. The
+function is vectorized, but for historical compatibility the return
+object is a single \code{Edge} if \code{index} is a scalar. The
+return object can be guaranteed to be a list if \code{as_list} is set.
 }
 
 \subsection{Returns}{
-the edge with the specified index.
+The edge, or list of edges, with the specified index.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Graph-has_edge"></a>}}
 \if{latex}{\out{\hypertarget{method-Graph-has_edge}{}}}
 \subsection{Method \code{has_edge()}}{
-Test whether an edge is element of the graph.
+Test whether an edge is an element of the graph.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Graph$has_edge(e)}\if{html}{\out{</div>}}
 }
@@ -279,12 +352,34 @@ Test whether an edge is element of the graph.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{e}}{Subject edge.}
+\item{\code{e}}{Edge or list of edges.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-\code{TRUE} if \code{e} is an element of \eqn{E(G)}.
+Logical vector with each element \code{TRUE} if the corresponding
+element of \code{e} is an element of \eqn{E(G)}.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Graph-edge_label"></a>}}
+\if{latex}{\out{\hypertarget{method-Graph-edge_label}{}}}
+\subsection{Method \code{edge_label()}}{
+Find label of edge at index i
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Graph$edge_label(ie)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{ie}}{Index of edge, or vector of indexes.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Label of edge at index i, or character vector with the labels at
+indexes \code{ie}.
 }
 }
 \if{html}{\out{<hr>}}
@@ -300,7 +395,7 @@ Compute the adjacency matrix for the graph.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{boolean}}{If \code{TRUE}, the adjacency matrix is logical, each
-cell is {\code{FALSE}, \code{TRUE}}.}
+cell is \{\code{FALSE}, \code{TRUE}\}.}
 }
 \if{html}{\out{</div>}}
 }
@@ -314,8 +409,8 @@ cells are either 0 (not adjacent) or 1 (adjacent).
 \subsection{Returns}{
 A square integer matrix with the number of rows and columns
 equal to the order of the graph. The rows and columns are labelled
-with the node labels, if all the nodes in the graph have labels, or the
-node indices if not.
+with the node labels, if all the nodes in the graph have unique labels,
+or the node indices if not.
 }
 }
 \if{html}{\out{<hr>}}
@@ -346,7 +441,7 @@ Test whether the graph is connected.
 
 \subsection{Details}{
 Graphs with no vertices are considered unconnected; graphs with
-1 vertex are considered connected. Otherwise a graph is connected if all 
+1 vertex are considered connected. Otherwise a graph is connected if all
 nodes can be reached from an arbitrary starting point. Uses a depth first
 search.
 }
@@ -367,7 +462,7 @@ Checks for the presence of a cycle in the graph.
 \subsection{Details}{
 Uses a depth-first search from each node to detect the
 presence of back edges. A back edge is an edge from the current node
-joining a previously detected (visited) node, that is not the parent 
+joining a previously detected (visited) node, that is not the parent
 node of the current one.
 }
 
@@ -424,12 +519,12 @@ Find the neighbours of a node.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{v}}{The subject node.}
+\item{\code{v}}{The subject node (scalar, not a list).}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Details}{
-A property of the graph, not the node. Does not include self, 
+A property of the graph, not the node. Does not include self,
 even in the case of a loop to self.
 }
 
@@ -448,7 +543,7 @@ Export a representation of the graph in DOT format.
 
 \subsection{Details}{
 Writes the representation in the \code{graphviz} DOT language
-(\url{http://graphviz.org/doc/info/lang.html}) for drawing with one
+(\url{https://graphviz.org/doc/info/lang.html}) for drawing with one
 of the \code{graphviz} tools including \code{dot} (Gansner, 1993).
 }
 

@@ -1,17 +1,17 @@
 
 # tests of creating states
 test_that("missing state names are rejected", {
-  expect_error(MarkovState$new(name=NA), class="missing_state_name")
+  expect_error(MarkovState$new(name = NA), class = "missing_state_name")
 })
 
 test_that("non-character state names are rejected", {
-  expect_error(MarkovState$new(name = 42L), class="non-string_state_name")
+  expect_error(MarkovState$new(name = 42L), class = "non-string_state_name")
 })
 
 test_that("invalid annual costs are rejected", {
   expect_error(
-    MarkovState$new(name="Answer", cost="42"),
-    class="invalid_annual_cost"
+    MarkovState$new(name = "Answer", cost = "42"),
+    class = "invalid_annual_cost"
   )
 })
 
@@ -22,7 +22,8 @@ test_that("invalid utilities are rejected", {
   )
   expect_error(
     MarkovState$new(name = "Futile", utility = 2.0),
-    class = "invalid_utility")
+    class = "invalid_utility"
+  )
 })
 
 # tests of label, cost and utility
@@ -44,8 +45,8 @@ test_that("utilties are set and got", {
 # tests of costs and utilities that are ModVars
 test_that("state cost and utility ModVars are recognised", {
   # create model variables
-  c.dis <- GammaModVar$new("Cost", "GBP", shape = 10000.0, scale = 1.0/10.0)
-  u.dis <- BetaModVar$new("Utility", "U", alpha = 10L, beta = 10L) 
+  c.dis <- GammaModVar$new("Cost", "GBP", shape = 10000.0, scale = 1.0 / 10.0)
+  u.dis <- BetaModVar$new("Utility", "U", alpha = 10L, beta = 10L)
   # create states
   expect_silent(
     MarkovState$new(name = "Disabled", cost = c.dis)
@@ -56,15 +57,11 @@ test_that("state cost and utility ModVars are recognised", {
 })
 
 test_that("ModVar state utilities whose values exceed 1 cause warnings", {
-  u.beta <- BetaModVar$new("Utility", "U", alpha = 10L, beta = 10L) 
+  u.beta <- BetaModVar$new("Utility", "U", alpha = 10L, beta = 10L)
   u.vw <- ExprModVar$new("vwell", "U", rlang::quo(2L + u.beta))
   u.beta$set("random")
-  expect_silent(
-    s.vw <- MarkovState$new(name="Very Well", utility = u.vw)
-  )
-  expect_silent(
-    u <- s.vw$utility()
-  )
+  s.vw <- MarkovState$new(name = "Very Well", utility = u.vw)
+  expect_silent(s.vw$utility())
 })
 
 test_that("ModVars are identified and returned", {
@@ -75,7 +72,7 @@ test_that("ModVars are identified and returned", {
   mv <- s$modvars()
   expect_length(mv, 1L)
   # two modvars
-  s <- MarkovState$new("Ill", cost=fortytwo, utility=poorly)
+  s <- MarkovState$new("Ill", cost = fortytwo, utility = poorly)
   mv <- s$modvars()
   expect_length(mv, 2L)
   d <- vapply(mv, FUN.VALUE = "x", FUN = function(v) {

@@ -1,29 +1,149 @@
-test_that("abortif raises an error condition as expected", {
-  x <- 1L
-  expect_silent(abortif(x > 1L, class = "no"))
-  expect_error(abortif(x == 1L, class = "no"), class = "no")
-  expect_error(abortif(x == 1L))
+# tests of abortif
+test_that("abortif accepts no expressions", {
+  expect_silent(abortif(class = "no"))
+  expect_silent(abortif(class = "no", message = "none"))
+  expect_silent(abortif())
 })
 
 test_that("abortif behaves correctly with non-boolean conditions", {
   expect_error(abortif("42"))
   expect_error(abortif(42L))
   expect_error(abortif("x"))
+  expect_error(abortif("x", FALSE))
 })
 
-test_that("abortifnot raises an error condition as expected", {
+test_that("abortif raises an error condition with a single expression", {
   x <- 1L
-  expect_silent(abortifnot(x == 1L, class = "no"))
-  expect_error(abortifnot(x == 2L, class = "no"), class = "no")
-  expect_error(abortifnot(x == 2L))
+  expect_silent(abortif(x > 1L, class = "no"))
+  expect_error(abortif(x == 1L, class = "no"), class = "no")
+  expect_error(abortif(x == 1L))
+})
+
+test_that("abortif raises an error condition with > 1 expression", {
+  x <- 1L
+  y <- "apple"
+  expect_silent(
+    abortif(
+      x > 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    )
+  )
+  expect_error(
+    abortif(
+      x == 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    )
+  )
+  expect_error(
+    abortif(
+      x > 1L,
+      y %in% c("orange", "pear", "apple")
+    )
+  )
+  expect_error(
+    abortif(
+      x == 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    ),
+    class = "no"
+  )
+})
+
+test_that("abortif error message with >1 expression is correct", {
+  f <- function(x) {
+    abortif(FALSE, x > 2L, FALSE, message = "failed inequality condition")
+  }
+  tmpenv <- env(errmsg = "")
+  tryCatch(
+    f(3L),
+    error = function(e) {
+      assign("errmsg", rlang::cnd_message(e), env = tmpenv)
+    }
+  )
+  expect_identical(
+    tmpenv$errmsg,
+    "failed inequality condition\n* x > 2L is not FALSE"
+  )
+  expect_true(TRUE)
+})
+
+# tests of abortifnot
+test_that("abortifnot accepts no expressions", {
+  expect_silent(abortifnot(class = "no"))
+  expect_silent(abortifnot(class = "no", message = "none"))
+  expect_silent(abortifnot())
 })
 
 test_that("abortifnot behaves correctly with non-boolean conditions", {
   expect_error(abortifnot("42"))
   expect_error(abortifnot(42L))
-  expect_error(abortif("x"))
+  expect_error(abortifnot("x"))
+  expect_error(abortifnot("x", TRUE))
 })
 
+test_that("abortifnot raises an error condition with a single expression", {
+  x <- 2L
+  expect_silent(abortifnot(x > 1L, class = "no"))
+  expect_error(abortifnot(x == 1L, class = "no"), class = "no")
+  expect_error(abortifnot(x == 1L))
+  expect_silent(abortifnot(is.character("random")))
+})
+
+test_that("abortifnot raises an error condition with > 1 expression", {
+  x <- 2L
+  y <- "orange"
+  expect_silent(
+    abortifnot(
+      x > 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    )
+  )
+  expect_error(
+    abortifnot(
+      x == 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    )
+  )
+  expect_error(
+    abortifnot(
+      x > 1L,
+      y %in% c("pear", "apple")
+    )
+  )
+  expect_error(
+    abortifnot(
+      x == 1L,
+      y %in% c("orange", "pear"),
+      class = "no"
+    ),
+    class = "no"
+  )
+})
+
+test_that("abortifnot error message with >1 expression is correct", {
+  f <- function(x) {
+    abortifnot(TRUE, x > 2L, TRUE, message = "failed inequality condition")
+  }
+  tmpenv <- env(errmsg = "")
+  tryCatch(
+    f(1L),
+    error = function(e) {
+      assign("errmsg", rlang::cnd_message(e), env = tmpenv)
+    }
+  )
+  expect_identical(
+    tmpenv$errmsg,
+    "failed inequality condition\n* x > 2L is not TRUE"
+  )
+  expect_true(TRUE)
+})
+
+# tests of as_numeric
 test_that("as_numeric missing argument is detected correctly", {
   expect_error(as_numeric())
 })
@@ -51,7 +171,7 @@ test_that("as_numeric identifies non ModVar objects", {
   expect_length(xo, 3L)
   expect_true(all(is.numeric(xo)))
   expect_true(all(is.na(xo)))
-  # R6 class but not ModVar    
+  # R6 class but not ModVar
   xi <- R6::R6Class()
   xo <- as_numeric(xi)
   expect_true(is.na(xo))

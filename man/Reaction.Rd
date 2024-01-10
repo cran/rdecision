@@ -5,7 +5,7 @@
 \alias{Reaction}
 \title{A reaction (chance) edge in a decision tree}
 \description{
-An R6 class representing a reaction (chance) edge in a decision 
+An R6 class representing a reaction (chance) edge in a decision
 tree.
 }
 \details{
@@ -23,8 +23,11 @@ Andrew J. Sims \email{andrew.sims@newcastle.ac.uk}
 \itemize{
 \item \href{#method-Reaction-new}{\code{Reaction$new()}}
 \item \href{#method-Reaction-modvars}{\code{Reaction$modvars()}}
+\item \href{#method-Reaction-set_probability}{\code{Reaction$set_probability()}}
 \item \href{#method-Reaction-p}{\code{Reaction$p()}}
+\item \href{#method-Reaction-set_cost}{\code{Reaction$set_cost()}}
 \item \href{#method-Reaction-cost}{\code{Reaction$cost()}}
+\item \href{#method-Reaction-set_benefit}{\code{Reaction$set_benefit()}}
 \item \href{#method-Reaction-benefit}{\code{Reaction$benefit()}}
 \item \href{#method-Reaction-clone}{\code{Reaction$clone()}}
 }
@@ -44,7 +47,7 @@ Andrew J. Sims \email{andrew.sims@newcastle.ac.uk}
 \if{html}{\out{<a id="method-Reaction-new"></a>}}
 \if{latex}{\out{\hypertarget{method-Reaction-new}{}}}
 \subsection{Method \code{new()}}{
-Create an object of type \code{Reaction}. A probability 
+Create an object of type \code{Reaction}. A probability
 must be assigned
 to the edge. Optionally, a cost and a benefit may be associated
 with traversing the edge. A \dfn{pay-off} (benefit-cost) is sometimes
@@ -61,11 +64,13 @@ general.
 
 \item{\code{target_node}}{Node which the reaction enters.}
 
-\item{\code{p}}{Probability}
+\item{\code{p}}{Conditional probability of traversing the reaction edge.}
 
-\item{\code{cost}}{Cost associated with traversal of this edge.}
+\item{\code{cost}}{Cost associated with traversal of this edge (numeric or
+\code{ModVar}).}
 
-\item{\code{benefit}}{Benefit associated with traversal of the edge.}
+\item{\code{benefit}}{Benefit associated with traversal of the edge (numeric or
+\code{ModVar}).}
 
 \item{\code{label}}{Character string containing the reaction label.}
 }
@@ -79,8 +84,8 @@ A new \code{Reaction} object.
 \if{html}{\out{<a id="method-Reaction-modvars"></a>}}
 \if{latex}{\out{\hypertarget{method-Reaction-modvars}{}}}
 \subsection{Method \code{modvars()}}{
-Find all the model variables of type \code{ModVar} that 
-have been specified as values associated with this Action. Includes 
+Find all the model variables of type \code{ModVar} that
+have been specified as values associated with this Action. Includes
 operands of these \code{ModVar}s, if they are expressions.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Reaction$modvars()}\if{html}{\out{</div>}}
@@ -88,6 +93,28 @@ operands of these \code{ModVar}s, if they are expressions.
 
 \subsection{Returns}{
 A list of \code{ModVar}s.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Reaction-set_probability"></a>}}
+\if{latex}{\out{\hypertarget{method-Reaction-set_probability}{}}}
+\subsection{Method \code{set_probability()}}{
+Set the probability associated with the reaction edge.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Reaction$set_probability(p)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{p}}{Conditional probability of traversing the reaction edge. Of type
+numeric or \code{ModVar}. If numeric, \code{p} must be in the range
+[0,1].}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Updated \code{Reaction} object.
 }
 }
 \if{html}{\out{<hr>}}
@@ -105,6 +132,27 @@ Numeric value in range [0,1].
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Reaction-set_cost"></a>}}
+\if{latex}{\out{\hypertarget{method-Reaction-set_cost}{}}}
+\subsection{Method \code{set_cost()}}{
+Set the cost associated with the reaction edge.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Reaction$set_cost(c = 0)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{c}}{Cost associated with traversing the reaction edge. Of type
+numeric or \code{ModVar}.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Updated \code{Reaction} object.
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Reaction-cost"></a>}}
 \if{latex}{\out{\hypertarget{method-Reaction-cost}{}}}
 \subsection{Method \code{cost()}}{
@@ -115,6 +163,27 @@ Return the cost associated with traversing the edge.
 
 \subsection{Returns}{
 Cost.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Reaction-set_benefit"></a>}}
+\if{latex}{\out{\hypertarget{method-Reaction-set_benefit}{}}}
+\subsection{Method \code{set_benefit()}}{
+Set the benefit associated with the reaction edge.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Reaction$set_benefit(b = 0)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{b}}{Benefit associated with traversing the reaction edge. Of type
+numeric or \code{ModVar}.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Updated \code{Action} object.
 }
 }
 \if{html}{\out{<hr>}}

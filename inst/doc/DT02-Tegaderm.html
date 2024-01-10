@@ -379,72 +379,88 @@ standard dressing.</p>
 <h1>Model variables</h1>
 <div id="source-variables" class="section level2">
 <h2>Source variables</h2>
-<p>Thirteen source variables were used in the model. The choice of
+<p>Eleven source variables were used in the model. The choice of
 variables, their distributions and their parameters are taken from Table
-3 of Jenks <em>et al</em><span class="citation"><sup>1</sup></span>,
+4 of Jenks <em>et al</em><span class="citation"><sup>1</sup></span>,
 with the following additional information:</p>
 <ul>
-<li>For variables with lognormal uncertainty, the company synthesized a
-log normal distribution as <span class="math inline">\(\exp(\mu + \sigma
-r())\)</span> where <span class="math inline">\(r()\)</span> is a random
-draw from a standard normal distribution. This is equivalent to the
-<code>LN1</code> parametrization of the <code>LogNormModVar</code>
-provided in <code>rdecision</code>.</li>
-<li>The values for <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> for the hazard ratio for CRBSI and
-LSI were -0.911 and -0.393 respectively, and 1.482 and 0.490 for the
-relative risk of dermatitis. The point estimates in the company’s model
-were taken at <span class="math inline">\(\exp(-0.911)\)</span> (0.402)
-and <span class="math inline">\(\exp(1.482)\)</span> (4.40), the
-expected value of the uncertainty distributions on the log scale, rather
-than at the expected values on the linear scale (0.434 and 4.963). In
-this vignette the latter are used for consistency between base case and
-PSA.</li>
-<li>The probabilities of CRBSI and LSI for standard dressings (<span class="math inline">\(p\)</span>) were modified by the hazard ratio for
-Tegaderm using the form <span class="math inline">\((1-(1-p)^r)\)</span>
-where <span class="math inline">\(r\)</span> is the hazard ratio.
-Relative risks were applied as multipliers.</li>
-<li>The point estimate cost of CRBSI was £9900, not £9990, although the
-parameters (198,50) are quoted correctly.</li>
+<li>The baseline catheter-related blood stream infection (CRBSI) rate
+was modelled as a Gamma distribution fitted by the method of moments to
+a mean of 1.48 (per 1000 catheter days) and a standard deviation of 0.12
+(per 1000 catheter days).</li>
+<li>The baseline local site infection (LSI) rate was modelled as a Gamma
+distribution fitted by the method of moments to a mean of 0.14 (per 1000
+catheter days) and an assumed standard deviation of 0.5 (/1000 catheter
+days).</li>
+<li>The baseline rate of dermatitis was modelled as a Beta distribution,
+based on one observed case in a trial of 476 catheter uses.</li>
+<li>The effect size of Tegaderm, expressed as the hazard ratio of
+Tegaderm compared with standard dressings for CRBSI and LSI, and the
+relative risk of Tegaderm compared with standard dressings for
+dermatitis, was modelled in each case using a log normal distribution.
+This was fitted to a sample mean and sample standard deviation on the
+natural scale, by using the “LN7” parametrization of
+<code>LogNormModVar</code>.</li>
+<li>The probabilities of CRBSI and LSI for standard dressings (<span class="math inline">\(p\)</span>) were modified by the hazard ratio
+<span class="math inline">\(r\)</span> for Tegaderm using the form <span class="math inline">\(p * r\)</span>. This is an approximation which
+holds only for very small rates.</li>
+<li>Relative risks were also applied as multipliers. This is an
+approximation which holds only for very small rates.</li>
 </ul>
 <p>The model variables were constructed as follows:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># clinical variables</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>r.CRBSI <span class="ot">&lt;-</span> NormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline CRBSI rate&quot;</span>, <span class="st">&quot;/1000 catheter days&quot;</span>, <span class="at">mu =</span> <span class="fl">1.48</span>, <span class="at">sigma =</span> <span class="fl">0.074</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>hr.CRBSI <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm CRBSI HR&quot;</span>, <span class="st">&quot;HR&quot;</span>, <span class="at">p1 =</span> <span class="sc">-</span><span class="fl">0.911</span>, <span class="at">p2 =</span> <span class="fl">0.393</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>hr.LSI <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm LSI HR&quot;</span>, <span class="st">&quot;HR&quot;</span>, <span class="at">p1 =</span> <span class="sc">-</span><span class="fl">0.911</span>, <span class="at">p2 =</span> <span class="fl">0.393</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>r.Dermatitis <span class="ot">&lt;-</span> NormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline dermatitis risk&quot;</span>, <span class="st">&quot;/catheter&quot;</span>, <span class="at">mu =</span> <span class="fl">0.0026</span>, <span class="at">sigma =</span> <span class="fl">0.00026</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>rr.Dermatitis <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm Dermatitis RR&quot;</span>, <span class="st">&quot;RR&quot;</span>, <span class="at">p1 =</span> <span class="fl">1.482</span>, <span class="at">p2 =</span> <span class="fl">0.490</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co"># cost variables</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>c.CRBSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;CRBSI cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, <span class="at">shape =</span> <span class="fl">198.0</span>, <span class="at">scale =</span> <span class="fl">50.0</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>c.Dermatitis <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Dermatitis cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, <span class="at">shape =</span> <span class="fl">30.0</span>, <span class="at">scale =</span> <span class="fl">5.0</span></span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># baseline risk</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>r.CRBSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline CRBSI rate&quot;</span>,  <span class="st">&quot;/1000 catheter days&quot;</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">1.48</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">0.12</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">0.12</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">1.48</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>r.LSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline LSI rate&quot;</span>, <span class="st">&quot;/1000 catheter days&quot;</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">0.14</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">0.5</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">0.5</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">0.14</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>r.Dermatitis <span class="ot">&lt;-</span> BetaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline dermatitis risk&quot;</span>, <span class="st">&quot;/catheter&quot;</span>, <span class="at">alpha =</span> 1L, <span class="at">beta =</span> 475L</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co"># relative effectiveness</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>hr.CRBSI <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm CRBSI HR&quot;</span>, <span class="st">&quot;HR&quot;</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">p1 =</span> <span class="fl">0.402</span>, <span class="at">p2 =</span> (<span class="fl">0.868</span> <span class="sc">-</span> <span class="fl">0.186</span>) <span class="sc">/</span> (2L <span class="sc">*</span> <span class="fl">1.96</span>), <span class="at">param =</span> <span class="st">&quot;LN7&quot;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>hr.LSI <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm LSI HR&quot;</span>, <span class="st">&quot;HR&quot;</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">p1 =</span> <span class="fl">0.402</span>, <span class="at">p2 =</span> (<span class="fl">0.868</span> <span class="sc">-</span> <span class="fl">0.186</span>) <span class="sc">/</span> (2L <span class="sc">*</span> <span class="fl">1.96</span>), <span class="at">param =</span> <span class="st">&quot;LN7&quot;</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>c.LSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;LSI cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, <span class="at">shape =</span> <span class="fl">50.0</span>, <span class="at">scale =</span> <span class="fl">5.0</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>rr.Dermatitis <span class="ot">&lt;-</span> LogNormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm Dermatitis RR&quot;</span>, <span class="st">&quot;RR&quot;</span>, <span class="at">p1 =</span> <span class="fl">1.0</span>, <span class="at">p2 =</span> <span class="fl">0.5</span>, <span class="at">param =</span> <span class="st">&quot;LN7&quot;</span></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>n.catheters <span class="ot">&lt;-</span> NormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;No. catheters&quot;</span>, <span class="st">&quot;catheters&quot;</span>, <span class="at">mu =</span> <span class="fl">3.0</span>, <span class="at">sigma =</span> <span class="fl">0.3</span> </span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>c.Tegaderm <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm CHG cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">6.21</span> <span class="sc">*</span> n.catheters)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co"># cost variables</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>c.CRBSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;CRBSI cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">9900.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">3000.0</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">3000.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">9900.0</span></span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>c.Standard <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Standard dressing cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.34</span><span class="sc">*</span>n.catheters)</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>n.cathdays <span class="ot">&lt;-</span> NormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;No. days with catheter&quot;</span>, <span class="st">&quot;days&quot;</span>, <span class="at">mu =</span> <span class="fl">10.0</span>, <span class="at">sigma =</span> <span class="fl">2.0</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>)  </span></code></pre></div>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>c.LSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;LSI cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">100.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">30.0</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">30.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">100.0</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>c.Dermatitis <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Dermatitis cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>,</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">6.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">3.0</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">3.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">6.0</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co"># number of dressings and days with catheter</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>n.dressings <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;No. dressings&quot;</span>, <span class="st">&quot;dressings&quot;</span>,</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">3.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">2.0</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">2.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">3.0</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>n.cathdays <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;No. days with catheter&quot;</span>, <span class="st">&quot;days&quot;</span>,</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">10.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">5.0</span> <span class="sc">^</span> 2L),</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">5.0</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">10.0</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="model-variable-expressions" class="section level2">
 <h2>Model variable expressions</h2>
@@ -454,54 +470,58 @@ themselves model variables. Forms of expression involving R functions
 and multiple model variables are supported, provided they conform to R
 syntax. The following code creates the model variable expressions to be
 used as values in the decision tree edges. For probabilities, the
-convention <span class="math inline">\(q = 1-p\)</span> is used to
+convention <span class="math inline">\(q = 1 - p\)</span> is used to
 ensure that the sum of probabilities leaving each chance node is
 one.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># probabilities</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>p.Dermatitis.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(dermatitis | standard dressing)&quot;</span>, <span class="st">&quot;P&quot;</span>, </span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.Dermatitis <span class="sc">*</span> n.catheters)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>q.Dermatitis.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(dermatitis | standard dressing)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, </span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.Dermatitis.S)</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>p.Dermatitis.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(dermatitis | Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>, </span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.Dermatitis <span class="sc">*</span> rr.Dermatitis <span class="sc">*</span> n.catheters)</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>q.Dermatitis.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(dermatitis | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, </span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.Dermatitis.T)</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>p.LSI.S <span class="ot">&lt;-</span> NormModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(LSI | Standard)&quot;</span>, <span class="st">&quot;/patient&quot;</span>, <span class="at">mu =</span> <span class="fl">0.1</span>, <span class="at">sigma =</span> <span class="fl">0.01</span> </span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>p.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.CRBSI <span class="sc">*</span> n.cathdays <span class="sc">/</span> <span class="fl">1000.0</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>q.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>,  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.S)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>p.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI|Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(p.CRBSI.S <span class="sc">*</span> hr.CRBSI)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>q.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.T)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>p.LSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(LSI | Standard)&quot;</span>, <span class="st">&quot;/patient&quot;</span>,</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.LSI <span class="sc">*</span> n.cathdays <span class="sc">/</span> <span class="fl">1000.0</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>q.LSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(LSI | Standard)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.LSI.S)</span>
 <span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>q.LSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(LSI | Standard)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.LSI.S) </span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>p.LSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(LSI | Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(p.LSI.S <span class="sc">*</span> hr.LSI)</span>
 <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>p.LSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(LSI | Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> (<span class="fl">1.0</span> <span class="sc">-</span> p.LSI.S) <span class="sc">^</span> hr.LSI)</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>q.LSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(LSI | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.LSI.T)</span>
 <span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>q.LSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(LSI | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.LSI.T)</span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>p.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;P&quot;</span>,  </span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.CRBSI <span class="sc">*</span> n.cathdays <span class="sc">/</span> <span class="fl">1000.0</span>)</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>p.Dermatitis.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(dermatitis | standard dressing)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.Dermatitis)</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>q.Dermatitis.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(dermatitis | standard dressing)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>,</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.Dermatitis.S)</span>
 <span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>q.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>,  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.S)</span>
-<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>p.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI|Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>, </span>
-<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> (<span class="fl">1.0</span> <span class="sc">-</span> r.CRBSI <span class="sc">*</span> n.cathdays <span class="sc">/</span> <span class="fl">1000.0</span>) <span class="sc">^</span> hr.CRBSI)</span>
-<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>q.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
-<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.T)</span>
-<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>p.Dermatitis.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(dermatitis | Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(p.Dermatitis.S <span class="sc">*</span> rr.Dermatitis)</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>q.Dermatitis.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(dermatitis | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>,</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.Dermatitis.T)</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>c.Tegaderm <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Tegaderm CHG cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">6.26</span> <span class="sc">*</span> n.dressings)</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>c.Standard <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Standard dressing cost&quot;</span>, <span class="st">&quot;GBP&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.54</span> <span class="sc">*</span> n.dressings)</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 </div>
 <div id="the-decision-tree" class="section level1">
@@ -523,120 +543,131 @@ implementation of the model.</p>
 al</em> because it allows for patients to have more than one adverse
 event (AE) during their stay (whereas their Figure 2 implies that only
 one event per patient is possible). The rates of AE were estimated
-independently, and allow for multiple events, <a href="#tree-diagram">see figure</a>.</p>
+independently, and allow for multiple events, (figure 1).</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create decision tree</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>th <span class="ot">&lt;-</span> <span class="fu">as.difftime</span>(7L, <span class="at">units =</span> <span class="st">&quot;days&quot;</span>)</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co"># standard dressing</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>t01 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t01&quot;</span>, <span class="at">interval =</span> th)</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>t02 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t02&quot;</span>, <span class="at">interval =</span> th)</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>c01 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>e01 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c01, t01, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>e02 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c01, t02, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>,</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>t03 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t03&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>t04 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t04&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>c02 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>e03 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c02, t03, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>e04 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c02, t04, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>,</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>c03 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>e05 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c03, c01, <span class="at">p =</span> p.LSI.S, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>e06 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c03, c02, <span class="at">p =</span> q.LSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>t11 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t11&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>t12 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t12&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>c11 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>e11 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c11, t11, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>e12 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c11, t12, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No Dermatitis&quot;</span>)</span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>t13 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t13&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>t14 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t14&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>c12 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>e13 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c12, t13, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis, </span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>e14 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c12, t14, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>c13 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>e15 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c13, c11, <span class="at">p =</span> p.LSI.S, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
-<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>e16 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c13, c12, <span class="at">p =</span> q.LSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
-<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>c23 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>e21 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c03, <span class="at">p =</span> p.CRBSI.S, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
-<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>e22 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c13, <span class="at">p =</span> q.CRBSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No CRBSI&quot;</span>)</span>
-<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a><span class="co"># Tegaderm branch  </span></span>
-<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>t31 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t31&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>t32 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t32&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>c31 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>e31 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c31, t31, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>e32 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c31, t32, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;no dermatitis&quot;</span>)</span>
-<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>t33 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t33&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>t34 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t34&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>c32 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>e33 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c32, t33, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>e34 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c32, t34, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a>c33 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a>e35 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c33, c31, <span class="at">p =</span> p.LSI.T, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
-<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a>e36 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c33, c32, <span class="at">p =</span> q.LSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
-<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>t41 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t41&quot;</span>, <span class="at">interval=</span>th)</span>
-<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>t42 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t42&quot;</span>, <span class="at">interval=</span>th)</span>
-<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>c41 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>e41 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c41, t41, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>e42 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c41, t42, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>t43 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t43&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>t44 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t44&quot;</span>, <span class="at">interval =</span> th)</span>
-<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>c42 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>e43 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c42, t43, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis,</span>
-<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span>)</span>
-<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>e44 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c42, t44, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, </span>
-<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>                    <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span>)</span>
-<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a>c43 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a>e45 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c43, c41, <span class="at">p =</span> p.LSI.T, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
-<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a>e46 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c43, c42, <span class="at">p =</span> q.LSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
-<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a>c53 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
-<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a>e51 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c43, <span class="at">p =</span> p.CRBSI.T, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
-<span id="cb3-91"><a href="#cb3-91" aria-hidden="true" tabindex="-1"></a>e52 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c33, <span class="at">p =</span> q.CRBSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;no CRBSI&quot;</span>)</span>
-<span id="cb3-92"><a href="#cb3-92" aria-hidden="true" tabindex="-1"></a><span class="co">#  </span></span>
-<span id="cb3-93"><a href="#cb3-93" aria-hidden="true" tabindex="-1"></a><span class="co"># decision node</span></span>
-<span id="cb3-94"><a href="#cb3-94" aria-hidden="true" tabindex="-1"></a>d1 <span class="ot">&lt;-</span> DecisionNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;d1&quot;</span>)</span>
-<span id="cb3-95"><a href="#cb3-95" aria-hidden="true" tabindex="-1"></a>e9 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c23, <span class="at">label =</span> <span class="st">&quot;Standard&quot;</span>, <span class="at">cost =</span> c.Standard)</span>
-<span id="cb3-96"><a href="#cb3-96" aria-hidden="true" tabindex="-1"></a>e10 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c53, <span class="at">label =</span> <span class="st">&quot;Tegaderm&quot;</span>, <span class="at">cost =</span> c.Tegaderm)</span>
-<span id="cb3-97"><a href="#cb3-97" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb3-98"><a href="#cb3-98" aria-hidden="true" tabindex="-1"></a><span class="co"># create decision tree</span></span>
-<span id="cb3-99"><a href="#cb3-99" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> <span class="fu">list</span>(d1, </span>
-<span id="cb3-100"><a href="#cb3-100" aria-hidden="true" tabindex="-1"></a>          c01, c02, c03, c11, c12, c13, c23, c31, c32, c33, c41, c42, c43, c53,</span>
-<span id="cb3-101"><a href="#cb3-101" aria-hidden="true" tabindex="-1"></a>          t01, t02, t03, t04, t11, t12, t13, t14, t31, t32, t33, t34, </span>
-<span id="cb3-102"><a href="#cb3-102" aria-hidden="true" tabindex="-1"></a>          t41, t42, t43, t44)</span>
-<span id="cb3-103"><a href="#cb3-103" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(e01, e02, e03, e04, e05, e06, e11, e12, e13, e14, e15, e16, e21, e22,</span>
-<span id="cb3-104"><a href="#cb3-104" aria-hidden="true" tabindex="-1"></a>          e31, e32, e33, e34, e35, e36, e41, e42, e43, e44, e45, e46, e51, e52,</span>
-<span id="cb3-105"><a href="#cb3-105" aria-hidden="true" tabindex="-1"></a>          e9,e10)</span>
-<span id="cb3-106"><a href="#cb3-106" aria-hidden="true" tabindex="-1"></a>DT <span class="ot">&lt;-</span> DecisionTree<span class="sc">$</span><span class="fu">new</span>(V, E)</span></code></pre></div>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>e01 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  c01, t01, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>e02 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  c01, t02, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>t03 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t03&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>t04 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t04&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>c02 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>e03 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  c02, t03, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>e04 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  c02, t04, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>c03 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>e05 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c03, c01, <span class="at">p =</span> p.LSI.S, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>e06 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c03, c02, <span class="at">p =</span> q.LSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>t11 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t11&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>t12 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t12&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>c11 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>e11 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>  c11, t11, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>e12 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  c11, t12, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No Dermatitis&quot;</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>t13 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t13&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>t14 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t14&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>c12 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>e13 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>  c12, t13, <span class="at">p =</span> p.Dermatitis.S, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>e14 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>  c12, t14, <span class="at">p =</span> q.Dermatitis.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>c13 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>e15 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c13, c11, <span class="at">p =</span> p.LSI.S, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>e16 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c13, c12, <span class="at">p =</span> q.LSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>c23 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>e21 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c03, <span class="at">p =</span> p.CRBSI.S, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>e22 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c13, <span class="at">p =</span> q.CRBSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No CRBSI&quot;</span>)</span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a><span class="co"># Tegaderm branch</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>t31 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t31&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>t32 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t32&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>c31 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>e31 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a>  c31, t31, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>e32 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>  c31, t32, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;no dermatitis&quot;</span></span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>t33 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t33&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>t34 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t34&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>c32 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a>e33 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a>  c32, t33, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a>e34 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a>  c32, t34, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>c33 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>e35 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c33, c31, <span class="at">p =</span> p.LSI.T, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
+<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>e36 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c33, c32, <span class="at">p =</span> q.LSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
+<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>t41 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t41&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>t42 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t42&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>c41 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>e41 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a>  c41, t41, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>e42 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>  c41, t42, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>t43 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t43&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>t44 <span class="ot">&lt;-</span> LeafNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;t44&quot;</span>, <span class="at">interval =</span> th)</span>
+<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>c42 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a>e43 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a>  c42, t43, <span class="at">p =</span> p.Dermatitis.T, <span class="at">cost =</span> c.Dermatitis, <span class="at">label =</span> <span class="st">&quot;Dermatitis&quot;</span></span>
+<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a>e44 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a>  c42, t44, <span class="at">p =</span> q.Dermatitis.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No dermatitis&quot;</span></span>
+<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a>c43 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-91"><a href="#cb3-91" aria-hidden="true" tabindex="-1"></a>e45 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c43, c41, <span class="at">p =</span> p.LSI.T, <span class="at">cost =</span> c.LSI, <span class="at">label =</span> <span class="st">&quot;LSI&quot;</span>)</span>
+<span id="cb3-92"><a href="#cb3-92" aria-hidden="true" tabindex="-1"></a>e46 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c43, c42, <span class="at">p =</span> q.LSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No LSI&quot;</span>)</span>
+<span id="cb3-93"><a href="#cb3-93" aria-hidden="true" tabindex="-1"></a>c53 <span class="ot">&lt;-</span> ChanceNode<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb3-94"><a href="#cb3-94" aria-hidden="true" tabindex="-1"></a>e51 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c43, <span class="at">p =</span> p.CRBSI.T, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
+<span id="cb3-95"><a href="#cb3-95" aria-hidden="true" tabindex="-1"></a>e52 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c33, <span class="at">p =</span> q.CRBSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;no CRBSI&quot;</span>)</span>
+<span id="cb3-96"><a href="#cb3-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-97"><a href="#cb3-97" aria-hidden="true" tabindex="-1"></a><span class="co"># decision node</span></span>
+<span id="cb3-98"><a href="#cb3-98" aria-hidden="true" tabindex="-1"></a>d1 <span class="ot">&lt;-</span> DecisionNode<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;d1&quot;</span>)</span>
+<span id="cb3-99"><a href="#cb3-99" aria-hidden="true" tabindex="-1"></a>e9 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c23, <span class="at">label =</span> <span class="st">&quot;Standard&quot;</span>, <span class="at">cost =</span> c.Standard)</span>
+<span id="cb3-100"><a href="#cb3-100" aria-hidden="true" tabindex="-1"></a>e10 <span class="ot">&lt;-</span> Action<span class="sc">$</span><span class="fu">new</span>(d1, c53, <span class="at">label =</span> <span class="st">&quot;Tegaderm&quot;</span>, <span class="at">cost =</span> c.Tegaderm)</span>
+<span id="cb3-101"><a href="#cb3-101" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-102"><a href="#cb3-102" aria-hidden="true" tabindex="-1"></a><span class="co"># create decision tree</span></span>
+<span id="cb3-103"><a href="#cb3-103" aria-hidden="true" tabindex="-1"></a>V <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb3-104"><a href="#cb3-104" aria-hidden="true" tabindex="-1"></a>  d1,</span>
+<span id="cb3-105"><a href="#cb3-105" aria-hidden="true" tabindex="-1"></a>  c01, c02, c03, c11, c12, c13, c23, c31, c32, c33, c41, c42, c43, c53,</span>
+<span id="cb3-106"><a href="#cb3-106" aria-hidden="true" tabindex="-1"></a>  t01, t02, t03, t04, t11, t12, t13, t14, t31, t32, t33, t34,</span>
+<span id="cb3-107"><a href="#cb3-107" aria-hidden="true" tabindex="-1"></a>  t41, t42, t43, t44</span>
+<span id="cb3-108"><a href="#cb3-108" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-109"><a href="#cb3-109" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb3-110"><a href="#cb3-110" aria-hidden="true" tabindex="-1"></a>  e01, e02, e03, e04, e05, e06, e11, e12, e13, e14, e15, e16, e21, e22,</span>
+<span id="cb3-111"><a href="#cb3-111" aria-hidden="true" tabindex="-1"></a>  e31, e32, e33, e34, e35, e36, e41, e42, e43, e44, e45, e46, e51, e52,</span>
+<span id="cb3-112"><a href="#cb3-112" aria-hidden="true" tabindex="-1"></a>  e9, e10</span>
+<span id="cb3-113"><a href="#cb3-113" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-114"><a href="#cb3-114" aria-hidden="true" tabindex="-1"></a>DT <span class="ot">&lt;-</span> DecisionTree<span class="sc">$</span><span class="fu">new</span>(V, E)</span></code></pre></div>
 </div>
 <div id="tree-diagram" class="section level2">
 <h2>Tree diagram</h2>
+<p>The <code>draw</code> method of a <code>DecisionTree</code> object
+creates a graphical representation of the tree, as follows.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DT<span class="sc">$</span><span class="fu">draw</span>(<span class="at">border =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="data:image/png;base64,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" alt="Decision tree for the Tegaderm model" />
+<img src="data:image/png;base64,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" alt="Figure 1. Decision tree for the Tegaderm model" />
 <p class="caption">
-Decision tree for the Tegaderm model
+Figure 1. Decision tree for the Tegaderm model
 </p>
 </div>
 <p>In the company’s model, the uncertainties in the probabilities
@@ -669,47 +700,47 @@ following table, with expression model variables excluded.</p>
 <tbody>
 <tr class="odd">
 <td align="left">Dermatitis cost</td>
-<td align="left">Ga(30,5)</td>
+<td align="left">Ga(4,1.5)</td>
 </tr>
 <tr class="even">
 <td align="left">Baseline dermatitis risk</td>
-<td align="left">N(0.0026,0.00026)</td>
-</tr>
-<tr class="odd">
-<td align="left">No. catheters</td>
-<td align="left">N(3,0.3)</td>
-</tr>
-<tr class="even">
-<td align="left">LSI cost</td>
-<td align="left">Ga(50,5)</td>
-</tr>
-<tr class="odd">
-<td align="left">P(LSI | Standard)</td>
-<td align="left">N(0.1,0.01)</td>
-</tr>
-<tr class="even">
-<td align="left">CRBSI cost</td>
-<td align="left">Ga(198,50)</td>
-</tr>
-<tr class="odd">
-<td align="left">Baseline CRBSI rate</td>
-<td align="left">N(1.48,0.074)</td>
-</tr>
-<tr class="even">
-<td align="left">No. days with catheter</td>
-<td align="left">N(10,2)</td>
+<td align="left">Be(1,475)</td>
 </tr>
 <tr class="odd">
 <td align="left">Tegaderm Dermatitis RR</td>
-<td align="left">LN(1.482,0.49)</td>
+<td align="left">LN(-0.112,0.472)</td>
 </tr>
 <tr class="even">
+<td align="left">LSI cost</td>
+<td align="left">Ga(11.111,9)</td>
+</tr>
+<tr class="odd">
+<td align="left">Baseline LSI rate</td>
+<td align="left">Ga(0.078,1.786)</td>
+</tr>
+<tr class="even">
+<td align="left">No. days with catheter</td>
+<td align="left">Ga(4,2.5)</td>
+</tr>
+<tr class="odd">
 <td align="left">Tegaderm LSI HR</td>
-<td align="left">LN(-0.911,0.393)</td>
+<td align="left">LN(-0.997,0.414)</td>
+</tr>
+<tr class="even">
+<td align="left">No. dressings</td>
+<td align="left">Ga(2.25,1.333)</td>
+</tr>
+<tr class="odd">
+<td align="left">CRBSI cost</td>
+<td align="left">Ga(10.89,909.091)</td>
+</tr>
+<tr class="even">
+<td align="left">Baseline CRBSI rate</td>
+<td align="left">Ga(152.111,0.01)</td>
 </tr>
 <tr class="odd">
 <td align="left">Tegaderm CRBSI HR</td>
-<td align="left">LN(-0.911,0.393)</td>
+<td align="left">LN(-0.997,0.414)</td>
 </tr>
 </tbody>
 </table>
@@ -718,12 +749,12 @@ following table, with expression model variables excluded.</p>
 <h2>Point estimates and distributions of model variables</h2>
 <p>The point estimates, units and distributional properties are obtained
 from the same call, in the remaining columns.</p>
-<table style="width:83%;">
+<table style="width:86%;">
 <colgroup>
 <col width="43%" />
 <col width="12%" />
-<col width="13%" />
-<col width="13%" />
+<col width="15%" />
+<col width="15%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -736,69 +767,69 @@ from the same call, in the remaining columns.</p>
 <tbody>
 <tr class="odd">
 <td align="left">Dermatitis cost, GBP</td>
-<td align="right">150</td>
-<td align="right">101</td>
-<td align="right">208</td>
+<td align="right">6</td>
+<td align="right">1.63</td>
+<td align="right">13.2</td>
 </tr>
 <tr class="even">
 <td align="left">Baseline dermatitis risk, /catheter</td>
-<td align="right">0.0026</td>
-<td align="right">0.00209</td>
-<td align="right">0.00311</td>
+<td align="right">0.0021</td>
+<td align="right">5.33e-05</td>
+<td align="right">0.00774</td>
 </tr>
 <tr class="odd">
-<td align="left">No. catheters, catheters</td>
-<td align="right">3</td>
-<td align="right">2.41</td>
-<td align="right">3.59</td>
+<td align="left">Tegaderm Dermatitis RR, RR</td>
+<td align="right">1</td>
+<td align="right">0.354</td>
+<td align="right">2.26</td>
 </tr>
 <tr class="even">
 <td align="left">LSI cost, GBP</td>
-<td align="right">250</td>
-<td align="right">186</td>
-<td align="right">324</td>
+<td align="right">100</td>
+<td align="right">50.1</td>
+<td align="right">167</td>
 </tr>
 <tr class="odd">
-<td align="left">P(LSI | Standard), /patient</td>
-<td align="right">0.1</td>
-<td align="right">0.0804</td>
-<td align="right">0.12</td>
-</tr>
-<tr class="even">
-<td align="left">CRBSI cost, GBP</td>
-<td align="right">9900</td>
-<td align="right">8569</td>
-<td align="right">11326</td>
-</tr>
-<tr class="odd">
-<td align="left">Baseline CRBSI rate, /1000 catheter days</td>
-<td align="right">1.48</td>
-<td align="right">1.33</td>
-<td align="right">1.63</td>
+<td align="left">Baseline LSI rate, /1000 catheter days</td>
+<td align="right">0.14</td>
+<td align="right">3.92e-21</td>
+<td align="right">1.47</td>
 </tr>
 <tr class="even">
 <td align="left">No. days with catheter, days</td>
 <td align="right">10</td>
-<td align="right">6.08</td>
-<td align="right">13.9</td>
+<td align="right">2.72</td>
+<td align="right">21.9</td>
 </tr>
 <tr class="odd">
-<td align="left">Tegaderm Dermatitis RR, RR</td>
-<td align="right">4.96</td>
-<td align="right">1.68</td>
-<td align="right">11.5</td>
+<td align="left">Tegaderm LSI HR, HR</td>
+<td align="right">0.402</td>
+<td align="right">0.164</td>
+<td align="right">0.831</td>
 </tr>
 <tr class="even">
-<td align="left">Tegaderm LSI HR, HR</td>
-<td align="right">0.434</td>
-<td align="right">0.186</td>
-<td align="right">0.869</td>
+<td align="left">No. dressings, dressings</td>
+<td align="right">3</td>
+<td align="right">0.433</td>
+<td align="right">8</td>
+</tr>
+<tr class="odd">
+<td align="left">CRBSI cost, GBP</td>
+<td align="right">9900</td>
+<td align="right">4922</td>
+<td align="right">16589</td>
+</tr>
+<tr class="even">
+<td align="left">Baseline CRBSI rate, /1000 catheter days</td>
+<td align="right">1.48</td>
+<td align="right">1.25</td>
+<td align="right">1.72</td>
 </tr>
 <tr class="odd">
 <td align="left">Tegaderm CRBSI HR, HR</td>
-<td align="right">0.434</td>
-<td align="right">0.186</td>
-<td align="right">0.869</td>
+<td align="right">0.402</td>
+<td align="right">0.164</td>
+<td align="right">0.831</td>
 </tr>
 </tbody>
 </table>
@@ -812,6 +843,7 @@ from the same call, in the remaining columns.</p>
 <code>evaluate</code> method of a decision node to evaluate each pathway
 from the decision node, shown in the table. This model did not consider
 utility, and the columns associated with utility are removed.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>RES <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>()</span></code></pre></div>
 <table style="width:35%;">
 <colgroup>
 <col width="8%" />
@@ -829,12 +861,12 @@ utility, and the columns associated with utility are removed.</p>
 <tr class="odd">
 <td align="left">1</td>
 <td align="left">Standard</td>
-<td align="right">176.7</td>
+<td align="right">151.3</td>
 </tr>
 <tr class="even">
 <td align="left">1</td>
 <td align="left">Tegaderm</td>
-<td align="right">99.54</td>
+<td align="right">77.75</td>
 </tr>
 </tbody>
 </table>
@@ -845,23 +877,130 @@ utility, and the columns associated with utility are removed.</p>
 variable, varied independently of the others, is demonstrated by a
 tornado diagram. The method <code>tornado</code> can be used to generate
 such a plot (and also provides a tabulated version of the values used in
-the plot). Source variables are varied over their 95% confidence limits,
-<a href="#univariate-sensitivity-analysis">see figure</a>.</p>
+the plot). Source variables are varied over their 95% confidence limits
+(figure 2).</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>to <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">tornado</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">index =</span> <span class="fu">list</span>(e10), <span class="at">ref =</span> <span class="fu">list</span>(e9), <span class="at">draw =</span> <span class="cn">TRUE</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="data:image/png;base64,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" alt="Tornado diagram for the Tegaderm model" />
+<img src="data:image/png;base64,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" alt="Figure 2. Tornado diagram for the Tegaderm model" />
 <p class="caption">
-Tornado diagram for the Tegaderm model
+Figure 2. Tornado diagram for the Tegaderm model
 </p>
 </div>
+<p>The object returned from method <code>tornado</code>
+(<code>to</code>) is a data frame which includes the values of the cost
+difference when each model variable is univariately at the limits of its
+95% confidence interval, as follows:</p>
+<table>
+<colgroup>
+<col width="41%" />
+<col width="10%" />
+<col width="10%" />
+<col width="18%" />
+<col width="18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Variable</th>
+<th align="right">LL</th>
+<th align="right">UL</th>
+<th align="right">outcome.min</th>
+<th align="right">outcome.max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">No. days with catheter, days</td>
+<td align="right">2.72</td>
+<td align="right">21.92</td>
+<td align="right">9.74</td>
+<td align="right">178.1</td>
+</tr>
+<tr class="even">
+<td align="left">CRBSI cost, GBP</td>
+<td align="right">4922</td>
+<td align="right">16589</td>
+<td align="right">29.48</td>
+<td align="right">132.7</td>
+</tr>
+<tr class="odd">
+<td align="left">Tegaderm CRBSI HR, HR</td>
+<td align="right">0.16</td>
+<td align="right">0.83</td>
+<td align="right">108.5</td>
+<td align="right">10.67</td>
+</tr>
+<tr class="even">
+<td align="left">No. dressings, dressings</td>
+<td align="right">0.43</td>
+<td align="right">8</td>
+<td align="right">85.66</td>
+<td align="right">49.95</td>
+</tr>
+<tr class="odd">
+<td align="left">Baseline CRBSI rate, /1000 catheter days</td>
+<td align="right">1.25</td>
+<td align="right">1.72</td>
+<td align="right">60.17</td>
+<td align="right">88</td>
+</tr>
+<tr class="even">
+<td align="left">Baseline LSI rate, /1000 catheter days</td>
+<td align="right">0</td>
+<td align="right">1.47</td>
+<td align="right">73.46</td>
+<td align="right">74.34</td>
+</tr>
+<tr class="odd">
+<td align="left">LSI cost, GBP</td>
+<td align="right">50.12</td>
+<td align="right">166.8</td>
+<td align="right">73.5</td>
+<td align="right">73.6</td>
+</tr>
+<tr class="even">
+<td align="left">Tegaderm LSI HR, HR</td>
+<td align="right">0.16</td>
+<td align="right">0.83</td>
+<td align="right">73.58</td>
+<td align="right">73.48</td>
+</tr>
+<tr class="odd">
+<td align="left">Tegaderm Dermatitis RR, RR</td>
+<td align="right">0.35</td>
+<td align="right">2.26</td>
+<td align="right">73.55</td>
+<td align="right">73.53</td>
+</tr>
+<tr class="even">
+<td align="left">Dermatitis cost, GBP</td>
+<td align="right">1.63</td>
+<td align="right">13.15</td>
+<td align="right">73.54</td>
+<td align="right">73.54</td>
+</tr>
+<tr class="odd">
+<td align="left">Baseline dermatitis risk, /catheter</td>
+<td align="right">0</td>
+<td align="right">0.01</td>
+<td align="right">73.54</td>
+<td align="right">73.54</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="probabilistic-sensitivity-analysis" class="section level2">
 <h2>Probabilistic sensitivity analysis</h2>
 <p>Multivariate probabilistic sensitivity analysis is supported through
 the use of sampling model variables. The same call, with extra
-parameters, is used to run the PSA:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> 1000L</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>PSA <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>(<span class="at">setvars =</span> <span class="st">&quot;random&quot;</span>, <span class="at">by =</span> <span class="st">&quot;run&quot;</span>, <span class="at">N =</span> N)</span></code></pre></div>
-<p>The first few runs of PSA are as follows; the <code>by=&quot;run&quot;</code>
+parameters, is used to run the PSA and save the results in a data frame.
+Additionally, the cost difference is computed for each run of the model,
+as follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> 1000L</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>psa <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>(<span class="at">setvars =</span> <span class="st">&quot;random&quot;</span>, <span class="at">by =</span> <span class="st">&quot;run&quot;</span>, <span class="at">N =</span> N)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>psa<span class="sc">$</span>Difference <span class="ot">&lt;-</span> psa<span class="sc">$</span>Cost.Standard <span class="sc">-</span> psa<span class="sc">$</span>Cost.Tegaderm</span></code></pre></div>
+<p>The first few runs of PSA are as follows; the <code>by = &quot;run&quot;</code>
 option reshapes the table to give one row per simulation, rather than
 one row per run, per strategy.</p>
 <table style="width:71%;">
@@ -882,74 +1021,157 @@ one row per run, per strategy.</p>
 <tbody>
 <tr class="odd">
 <td align="left">1</td>
-<td align="right">86.03</td>
-<td align="right">154.6</td>
-<td align="right">-68.58</td>
+<td align="right">29.39</td>
+<td align="right">65.6</td>
+<td align="right">36.21</td>
 </tr>
 <tr class="even">
 <td align="left">2</td>
-<td align="right">139.7</td>
-<td align="right">183.6</td>
-<td align="right">-43.89</td>
+<td align="right">32.55</td>
+<td align="right">68.74</td>
+<td align="right">36.19</td>
 </tr>
 <tr class="odd">
 <td align="left">3</td>
-<td align="right">120.5</td>
-<td align="right">163.4</td>
-<td align="right">-42.94</td>
+<td align="right">75.77</td>
+<td align="right">203.9</td>
+<td align="right">128.2</td>
 </tr>
 <tr class="even">
 <td align="left">4</td>
-<td align="right">95.27</td>
-<td align="right">177.9</td>
-<td align="right">-82.66</td>
+<td align="right">56.05</td>
+<td align="right">234.6</td>
+<td align="right">178.5</td>
 </tr>
 <tr class="odd">
 <td align="left">5</td>
-<td align="right">72.74</td>
-<td align="right">151.9</td>
-<td align="right">-79.13</td>
+<td align="right">47.04</td>
+<td align="right">145</td>
+<td align="right">97.95</td>
 </tr>
 <tr class="even">
 <td align="left">6</td>
-<td align="right">94.55</td>
-<td align="right">158</td>
-<td align="right">-63.46</td>
+<td align="right">62.17</td>
+<td align="right">89.72</td>
+<td align="right">27.55</td>
 </tr>
 <tr class="odd">
 <td align="left">7</td>
-<td align="right">76.57</td>
-<td align="right">144.7</td>
-<td align="right">-68.16</td>
+<td align="right">128.5</td>
+<td align="right">275.8</td>
+<td align="right">147.4</td>
 </tr>
 <tr class="even">
 <td align="left">8</td>
-<td align="right">129.4</td>
-<td align="right">153.9</td>
-<td align="right">-24.56</td>
+<td align="right">19.31</td>
+<td align="right">36.48</td>
+<td align="right">17.17</td>
 </tr>
 <tr class="odd">
 <td align="left">9</td>
-<td align="right">126.6</td>
-<td align="right">210.8</td>
-<td align="right">-84.16</td>
+<td align="right">100.5</td>
+<td align="right">155.8</td>
+<td align="right">55.3</td>
 </tr>
 <tr class="even">
 <td align="left">10</td>
-<td align="right">95.32</td>
-<td align="right">125.7</td>
-<td align="right">-30.4</td>
+<td align="right">59.39</td>
+<td align="right">63.04</td>
+<td align="right">3.65</td>
 </tr>
 </tbody>
 </table>
 <p>From PSA (1000 runs), the mean cost of treatment with Tegaderm was
-99.61, the mean cost of treatment with standard dressings was 177.14 and
-the mean cost saving was -77.54. The 95% confidence interval for cost
-saving was -143.82 to -10.09; the standard deviation of the cost saving
-was 32.83. Overall, 98.7% of runs found that Tegaderm was cost saving.
-These results replicate those reported by the manufacturer (saving of
-77.76, 98.5% cases cost saving; mean cost of standard dressing 176.89,
-mean cost of Tegaderm 99.63).</p>
+74.74 GBP, the mean cost of treatment with standard dressings was 141.92
+GBP and the mean cost saving was 67.19 GBP. The 95% confidence interval
+for cost saving was -13.57 GBP to 213.91 GBP; the standard deviation of
+the cost saving was 58.50 GBP. Overall, 92.5% of runs found that
+Tegaderm was cost saving. These results replicate those reported by
+Jenks <em>et al</em> (saving of 72.90 GBP, 97.8% cases cost saving; mean
+cost of standard dressing 151.29 GBP, mean cost of Tegaderm 77.75
+GBP).</p>
+</div>
+<div id="scenario---low-baseline-rate-of-crbsi" class="section level2">
+<h2>Scenario - low baseline rate of CRBSI</h2>
+<p>Jenks <em>et al</em> modelled an additional scenario, in which the
+baseline rate of CRBSI was 0.3 per 1000 catheter days (modelled as a
+Gamma distribution fitted to a sample mean of 0.3 and a sample 95%
+confidence interval of 0.2 to 0.6). A way to achieve this in
+<code>rdecision</code> is to replace the model variable for the baseline
+rate of CRBSI, and any other model variables that depend on it via
+expressions, and then reconstruct the model, as follows.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>r.CRBSI <span class="ot">&lt;-</span> GammaModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Baseline CRBSI rate&quot;</span>,  <span class="st">&quot;/1000 catheter days&quot;</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">shape =</span> (<span class="fl">0.30</span> <span class="sc">^</span> 2L) <span class="sc">/</span> (<span class="fl">0.102</span> <span class="sc">^</span> 2L),</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> (<span class="fl">0.102</span> <span class="sc">^</span> 2L) <span class="sc">/</span> <span class="fl">0.30</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>p.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(r.CRBSI <span class="sc">*</span> n.cathdays <span class="sc">/</span> <span class="fl">1000.0</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>q.CRBSI.S <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | standard dressing)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>,  rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.S)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>p.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;P(CRBSI|Tegaderm)&quot;</span>, <span class="st">&quot;P&quot;</span>,</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  rlang<span class="sc">::</span><span class="fu">quo</span>(p.CRBSI.S <span class="sc">*</span> hr.CRBSI)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>q.CRBSI.T <span class="ot">&lt;-</span> ExprModVar<span class="sc">$</span><span class="fu">new</span>(</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Q(CRBSI | Tegaderm)&quot;</span>, <span class="st">&quot;1 - P&quot;</span>, rlang<span class="sc">::</span><span class="fu">quo</span>(<span class="fl">1.0</span> <span class="sc">-</span> p.CRBSI.T)</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>e21 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c03, <span class="at">p =</span> p.CRBSI.S, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>e22 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c23, c13, <span class="at">p =</span> q.CRBSI.S, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;No CRBSI&quot;</span>)</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>e51 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c43, <span class="at">p =</span> p.CRBSI.T, <span class="at">cost =</span> c.CRBSI, <span class="at">label =</span> <span class="st">&quot;CRBSI&quot;</span>)</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>e52 <span class="ot">&lt;-</span> Reaction<span class="sc">$</span><span class="fu">new</span>(c53, c33, <span class="at">p =</span> q.CRBSI.T, <span class="at">cost =</span> <span class="fl">0.0</span>, <span class="at">label =</span> <span class="st">&quot;no CRBSI&quot;</span>)</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  e01, e02, e03, e04, e05, e06, e11, e12, e13, e14, e15, e16, e21, e22,</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  e31, e32, e33, e34, e35, e36, e41, e42, e43, e44, e45, e46, e51, e52,</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>  e9, e10</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>DT <span class="ot">&lt;-</span> DecisionTree<span class="sc">$</span><span class="fu">new</span>(V, E)</span></code></pre></div>
+<p>The model for this scenario was run under PSA, as for the base
+case:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> 1000L</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>psa <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">evaluate</span>(<span class="at">setvars =</span> <span class="st">&quot;random&quot;</span>, <span class="at">by =</span> <span class="st">&quot;run&quot;</span>, <span class="at">N =</span> N)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>psa<span class="sc">$</span>Difference <span class="ot">&lt;-</span> psa<span class="sc">$</span>Cost.Standard <span class="sc">-</span> psa<span class="sc">$</span>Cost.Tegaderm</span></code></pre></div>
+<p>From PSA (1000 runs), the mean cost of treatment with Tegaderm was
+30.84 GBP, the mean cost of treatment with standard dressings was 33.45
+GBP and the mean cost saving was 2.61 GBP. The 95% confidence interval
+for cost saving was -26.73 GBP to 38.10 GBP; the standard deviation of
+the cost saving was 16.68 GBP. Overall, 55.1% of runs found that
+Tegaderm was cost saving. These results replicate those reported by
+Jenks <em>et al</em> (saving of 3.56 GBP, 57.9% cases cost saving; mean
+cost of standard dressing 34.47 GBP, mean cost of Tegaderm 30.79
+GBP).</p>
+<p>Two threshold analyses were reported for this scenario. This can be
+achieved in <code>rdecision</code> by using the <code>threshold</code>
+method of the decision tree. Firstly, the threshold hazard ratio of a
+CRBSI with Tegaderm versus a CRBSI with a standard dressing was varied
+in the range 0.1 to 0.9, as follows:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>hr_threshold <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">threshold</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">index =</span> <span class="fu">list</span>(e10),</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref =</span> <span class="fu">list</span>(e9),</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">outcome =</span> <span class="st">&quot;saving&quot;</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">mvd =</span> <span class="st">&quot;Tegaderm CRBSI HR&quot;</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  a <span class="ot">&lt;-</span> <span class="fl">0.1</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  b <span class="ot">&lt;-</span> <span class="fl">0.9</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">tol =</span> <span class="fl">0.01</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>This gave a threshold value of 0.53, above which Tegaderm became cost
+incurring (the reported threshold was 0.53). Secondly, the cost of each
+CRBSI was varied between 0 GBP and 9900 GBP to find the threshold of
+cost saving, as follows:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>c_crbsi_threshold <span class="ot">&lt;-</span> DT<span class="sc">$</span><span class="fu">threshold</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">index =</span> <span class="fu">list</span>(e10),</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref =</span> <span class="fu">list</span>(e9),</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">outcome =</span> <span class="st">&quot;saving&quot;</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">mvd =</span> <span class="st">&quot;CRBSI cost&quot;</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  a <span class="ot">&lt;-</span> <span class="fl">0.0</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  b <span class="ot">&lt;-</span> <span class="fl">9900.0</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">tol =</span> <span class="fl">10.0</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>This gave a threshold value of 7,840.72 GBP, below which Tegaderm
+became cost incurring (the reported threshold was 8000 GBP).</p>
 </div>
 </div>
 <div id="references" class="section level1 unnumbered">
@@ -957,16 +1179,16 @@ mean cost of Tegaderm 99.63).</p>
 <div id="refs" class="references csl-bib-body" line-spacing="2">
 <div id="ref-jenks2016" class="csl-entry">
 <div class="csl-left-margin">1. </div><div class="csl-right-inline">Jenks, M., Craig, J., Green, W., Hewitt, N.,
-Arber, M. &amp; Sims, A. J. <a href="https://doi.org/10.1007/s40258-015-0202-5">Tegaderm <span>CHG IV
-Securement Dressing</span> for <span>Central Venous</span> and
-<span>Arterial Catheter Insertion Sites</span>: <span>A NICE Medical
-Technology Guidance</span></a>. <em>Applied Health Economics and Health
+Arber, M. &amp; Sims, A. J. <a href="https://doi.org/10.1007/s40258-015-0202-5">Tegaderm
+<span>CHG</span> <span>IV</span> securement dressing for central venous
+and arterial catheter insertion sites: A <span>NICE</span> medical
+technology guidance</a>. <em>Applied Health Economics and Health
 Policy</em> <strong>14,</strong> 135–149 (2016).</div>
 </div>
 <div id="ref-briggs2006" class="csl-entry">
 <div class="csl-left-margin">2. </div><div class="csl-right-inline">Briggs, A., Claxton, K. &amp; Sculpher, M.
-<em>Decision modelling for health economic evaluation</em>.
-(<span>Oxford University Press</span>, 2006).</div>
+<em>Decision modelling for health economic evaluation</em>. (Oxford
+University Press, 2006).</div>
 </div>
 </div>
 </div>

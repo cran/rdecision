@@ -1,3 +1,90 @@
+# rdecision 1.2.0
+
+* Updated citation for ProbOnto in `LogNormModVar` and `LogNormDistribution`
+  to reference the article in `BioInformatics`.
+* Updated URLs for GraphViz and codecov.
+* Escaped brackets in Rd method documentation that are not Rd macros.
+* Tidied up image file names and badges used by README.md.
+* Placed code for the shale gas example in a separate script with test
+  expectations and referenced it from the vignette to avoid code duplication
+  in the package.
+* Placed code for the New Scientist digraph puzzle in a separate script with
+  test expectations, and referenced it from the vignette, to avoid code
+  duplication in the package.
+* Placed code for Sonnenberg and Beck's canonical prosthetic heart valve example
+  in a separate model script with test expectations. Referenced it in the
+  second README example, to avoid code duplication in the package.
+* Changed README decision tree code ("lifestyle" example) to reference code in
+  a separate script (the same code used for the decision tree tutorial).
+* Placed decision tree tutorial vignette code in a separate script with
+  `test_that` expectations, and referenced code from the vignette's markdown.
+  This avoided duplication of code between the vignette and test code.
+* Added method `set_utility` to `LeafNode`.
+* Changed `evaluate` method of `DecisionTree` to ensure that the components of
+  strategy labels are ordered by the lexicographical order of node labels. For
+  example, if there is a decision node labelled `d1` with emanating action edges
+  `d1a` and `d1b`, and a decision node labelled `d2` with emanating action edges
+  `d2a` and `d2b`, the set of strategy labels is `{d1a_d2a, d1a_d2b, d1b_d2a,
+  d1b_d2b}`, not `{d2a_d1a, d2a_d1b, d2b_d1a, d2b_d1b}`, even if node `d1` has
+  a greater index than node `d2`.
+* Changed `evaluate_walks` method of `DecisionTree` to return the index of the
+  leaf node for each path as the row name of the numeric matrix. Formerly it
+  was coerced into a real value and saved in the matrix in a column called
+  `Leaf`.
+* Changed `reset` function of `SemiMarkovModel` to default to zero population
+  in each state. Previously the first state was allocated 1000 people, but if
+  vertexes were reordered, the first state is not the same as the first one
+  provided, leading to unexpected behaviour.
+* Changed `postree` method of `Arborescence` to use lexicographic order of node
+  labels to define sibling order. Changed local array indexing to use `[[]]` and
+  fixed unintentional use of array slicing under some circumstances.
+* Replaced calls to `par` in the tornado plot section of `DecisionTree` with
+  calls to `withr::with_par`. This avoids the need to change the global plot
+  defaults. Package `withr` added to dependency list.
+* Placed Tegaderm model vignette code in a separate script with `test_that`
+  expectations, and referenced code from the vignette's markdown. This
+  reduced duplication of code between vignette and test harness.
+* Added functions `vertex_label` and `edge_label` to `Graph` to support checked
+  iteration of lists of nodes and edges when retrieving labels.
+* Vectorized functions `edge_index`, `edge_at` and `has_edge` in `Graph`.
+* Vectorized functions `vertex_index`, `vertex_at` and `has_vertex` in `Graph`.
+* Added functions `arrow_source` and `arrow_target` to `Digraph` to support
+  checked iteration of lists of arrows to retrieve their source or target nodes.
+* Placed code for the Sumatriptan vignette into a single script with tests,
+  (`test-model-Sumatriptan.R`), to avoid replicating code in test scripts.
+* Added `set_cost`, `set_benefit` and `set_probability` to class `Reaction` to
+  allow dynamic setting of costs, benefits and probabilities in decision trees
+  without the need to rebuild the model.
+* Added `set_cost` and `set_benefit` to class `Action` to allow dynamic setting
+  of costs and benefits in decision trees without the need to rebuild the model.
+* Created `vutils.R` in folder vignettes as a home for helper functions used in
+  vignette building.
+* Optimised cycling speed in `SemiMarkovModel` by creating private methods
+  to manage the kernel operations of cycling the population and tallying the
+  costs and benefits. Approx factor of 10 improvement in speed, which is
+  helpful with PSA.
+* Clarified the role of `hcc.pop` and `hcc.cost` in function `cycle` of
+  `SemiMarkovModel`. Removed the requirement for `hcc.pop` to be TRUE if
+  `hcc.cost` is TRUE (i.e., the corrections are applied independently).
+* Combined code for Chancellor model of combination therapy for HIV into a
+  single script with tests (`test-model-AZT.R`), taking code from the SM01-HIV
+  vignette and the SemiMarkovModel test script. Non-test chunks are referenced
+  by the vignette to avoid repetition. Edited and clarified the vignette
+  and added PSA (as per Briggs example 4.7). Used `DiagrammeR` to create
+  Markov model diagram.
+* Added vignette for total knee replacement, a semi Markov model with PSA,
+  replicating Dong and Buxton, 2006. R code is taken from chunks in a 
+  `test_that` context, thus avoiding repetition of code between the vignette
+  and the test case.
+* Code chunks in vignettes which are entirely presentational are marked as
+  "purl = FALSE" to remove them from the R scripts that are generated at
+  vignette build. 
+* Added arguments `rankdir`, `width` and `height` in `Digraph::as_DOT` to permit
+  the drawing direction and size of canvas to be adjusted in the dot syntax.
+* Changed the first argument in utility functions `abortif` and `abortifnot` to
+  be `...`, to increase their similarity with `stopifnot`, allowing testing
+  of multiple conditions with a single call.
+
 # rdecision 1.1.3
 
 * Method `threshold` in `DecisionTree` now has no default value for parameter
