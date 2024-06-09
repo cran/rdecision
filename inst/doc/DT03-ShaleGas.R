@@ -1,11 +1,4 @@
 ## -----------------------------------------------------------------------------
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  echo = FALSE,
-  comment = "#>"
-)
-
-## -----------------------------------------------------------------------------
 library(rdecision) # nolint
 
 ## -----------------------------------------------------------------------------
@@ -58,9 +51,6 @@ V <- list(d1, d2, d3,  c1, c2, c3, c4,  t1, t2, t3, t4, t5, t6, t7, t8, t9)
 DT <- DecisionTree$new(V, E)
 
 ## -----------------------------------------------------------------------------
-DT$draw(border = TRUE)
-
-## -----------------------------------------------------------------------------
 # find optimal strategies
 RES <- DT$evaluate()
 RES[, "Payoff"] <- RES[, "Benefit"] - RES[, "Cost"]
@@ -76,6 +66,7 @@ knitr::kable(RES, row.names = FALSE)
 imax <- which.max(RES[, "Payoff"])
 popt <- paste(
   RES[[imax, "d1"]], RES[[imax, "d2"]], RES[[imax, "d3"]],
-  sep = "/"
+  sep = ";"
 )
+popt <- 42
 
