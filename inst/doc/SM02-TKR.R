@@ -1,73 +1,4 @@
 ## -----------------------------------------------------------------------------
-#' @title Write a monetary value
-#' @param x Monetary value, or vector of values
-#' @param p Logical; if TRUE show value to nearest penny, cent etc. If FALSE
-#' show it to the nearest pound, dollar, euro etc.
-#' @noRd
-gbp <- function(x, p = FALSE) {
-  digits <- if (p) 2L else 0L
-  s <- format(
-    x = vapply(X = x, FUN.VALUE = 1.0, FUN = round, digits = digits),
-    digits = NULL,
-    nsmall = digits,
-    scientific = FALSE,
-    big.mark = ","
-  )
-  return(s)
-}
-
-## -----------------------------------------------------------------------------
-#' @title Create a placeholder image in a png file
-#' @description Draws a rectangle with a diagonal using the grid package.
-#' @param pngfile name of png file to create.
-#' @param width width of image in pixels
-#' @param height height of image in pixels
-#' @return Name of the png file written to.
-#' @noRd
-placeholder <- function(pngfile = tempfile(fileext = ".png"), width = 480L,
-                        height = 320L) {
-  grDevices::png(pngfile, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.move.to(
-    x = grid::unit(0.0, "npc"),
-    y = grid::unit(0.0, "npc")
-  )
-  grid::grid.line.to(
-    x = grid::unit(1.0, "npc"),
-    y = grid::unit(1.0, "npc")
-  )
-  grid::grid.move.to(
-    x = grid::unit(0.0, "npc"),
-    y = grid::unit(1.0, "npc")
-  )
-  grid::grid.line.to(
-    x = grid::unit(1.0, "npc"),
-    y = grid::unit(0.0, "npc")
-  )
-  invisible(grDevices::dev.off())
-  return(pngfile)
-}
-
-#' @title Render a DOT format graph as a png file.
-#' @description Uses the \code{dot} command line tool from the graphviz project,
-#' if it is available on the host system, or creates a placeholder image if not.
-#' @param dot GraphViz dot representation in character vector form.
-#' @param pngfile path of png file to create.
-#' @return pathname of the png file created (including extension).
-#' @noRd
-gv2png <- function(dot, pngfile = tempfile(fileext = ".png")) {
-  cmddot <- Sys.which("dot")
-  if (nchar(cmddot["dot"]) > 0L) {
-    dotfile <- tempfile(fileext = ".gv")
-    writeLines(dot, con = dotfile)
-    system2(command = cmddot["dot"], args = c("-Tpng", "-o", pngfile, dotfile))
-  } else {
-    pngfile <- placeholder(pngfile = pngfile)
-  }
-  return(pngfile)
-}
-
-## -----------------------------------------------------------------------------
 library(rdecision)
 
 ## -----------------------------------------------------------------------------
@@ -196,11 +127,97 @@ SMM_CAS <- SemiMarkovModel$new(
 )
 
 ## -----------------------------------------------------------------------------
-# images created with dot are more compact than DiagrammeR.
-pngfile <- gv2png(
-  dot = SMM_base$as_DOT(rankdir = "TB", width = 7.0, height = 7.0)
-)
-knitr::include_graphics(pngfile)
+with(data = SMM_base$tabulate_states(), expr = {
+  data.frame(
+    Name = Name,
+    Utility = Utility,
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
+local({
+  # create an igraph object
+  gml <- SMM_base$as_gml()
+  gmlfile <- tempfile(fileext = ".gml")
+  writeLines(gml, con = gmlfile)
+  ig <- igraph::read_graph(gmlfile, format = "gml")
+  # match layout to Dong & Buxton, fig 1
+  vxy <- matrix(
+    data = c(
+      +0.00, -0.75, +0.00, +0.75, -1.00, -0.25, +0.50, -0.75, +1.25,
+      +1.00, +0.05, +0.50, +0.00, -0.50, -0.50, -0.50, -1.00, -0.75
+    ),
+    ncol = 2L,
+    dimnames = list(states, c("x", "y"))
+  )
+  layout <- matrix(
+    data = c(
+      vapply(X = igraph::V(ig), FUN.VALUE = 1.0, FUN = function(v) {
+        lbl <- igraph::vertex_attr(ig, "label", v)
+        return(vxy[[lbl, "x"]])
+      }),
+      vapply(X = igraph::V(ig), FUN.VALUE = 1.0, FUN = function(v) {
+        lbl <- igraph::vertex_attr(ig, "label", v)
+        return(vxy[[lbl, "y"]])
+      })
+    ),
+    byrow = FALSE,
+    ncol = 2L
+  )
+  # vertex widths
+  vwidth <- vapply(X = igraph::V(ig), FUN.VALUE = 1.0, FUN = function(v) {
+    lbl <- igraph::vertex_attr(ig, "label", v)
+    return(nchar(lbl) * 4.0 + 2.0)
+  })
+  # edge curvatures
+  cm <- matrix(
+    data = 0.0, nrow = length(states), ncol = length(states),
+    dimnames = list(states, states)
+  )
+  cm[[
+    "TKR operation for knee problems", "TKR with serious complications"
+  ]] <- -0.7
+  cm[[
+    "TKR operation for knee problems", "Normal health after primary TKR"
+  ]] <- +1.4
+  cm[["Complex revision", "Death"]] <- -0.3
+  cm[["Simple revision", "Death"]] <- -0.2
+  cm[["Other treatments", "Death"]] <- -0.1
+  cm[["TKR with minor complications", "Death"]] <- +2.5
+  cm[["TKR with serious complications", "Death"]] <- +0.4
+  curves <- vapply(X = igraph::E(ig), FUN.VALUE = 1.0, FUN = function(e) {
+    # find source and target labels
+    trg <- igraph::head_of(ig, e)
+    trgl <- igraph::vertex_attr(ig, name = "label", index = trg)
+    src <- igraph::tail_of(ig, e)
+    srcl <- igraph::vertex_attr(ig, name = "label", index = src)
+    cr <- cm[[srcl, trgl]]
+    return(cr)
+  })
+
+  # plot the igraph
+  withr::with_par(
+    new = list(
+      oma = c(0L, 0L, 0L, 0L),
+      mar = c(1L, 6L, 1L, 6L),
+      xpd = NA
+    ),
+    code = {
+      plot(
+        ig,
+        rescale = FALSE, asp = 0L,
+        vertex.shape = "rectangle", vertex.size = vwidth,
+        vertex.color = "white", vertex.label.color = "black",
+        edge.color = "black", edge.curved = curves,
+        edge.arrow.size = 0.75,
+        frame = FALSE,
+        layout = layout,
+        loop.size = 0.8
+      )
+    }
+  )
+})
 
 ## -----------------------------------------------------------------------------
 # Death
@@ -304,6 +321,47 @@ SMM_CAS_10years <- SMM_CAS$cycles(
 )
 
 ## -----------------------------------------------------------------------------
+data.frame(
+  Cycle = SMM_base_10years[0L : 5L, "Cycle"],
+  Years = round(SMM_base_10years[0L : 5L, "Years"], digits = 2L),
+  Cost = gbp(SMM_base_10years[0L : 5L, "Cost"], p = TRUE, char = FALSE),
+  QALY = round(SMM_base_10years[0L : 5L, "QALY"], digits = 3L),
+  A = round(SMM_base_10years[0L : 5L, states[["A"]]], digits = 2L),
+  B = round(SMM_base_10years[0L : 5L, states[["B"]]], digits = 2L),
+  C = round(SMM_base_10years[0L : 5L, states[["C"]]], digits = 2L),
+  D = round(SMM_base_10years[0L : 5L, states[["D"]]], digits = 2L),
+  E = round(SMM_base_10years[0L : 5L, states[["E"]]], digits = 2L),
+  F = round(SMM_base_10years[0L : 5L, states[["F"]]], digits = 2L),
+  G = round(SMM_base_10years[0L : 5L, states[["G"]]], digits = 2L),
+  H = round(SMM_base_10years[0L : 5L, states[["H"]]], digits = 2L),
+  I = round(SMM_base_10years[0L : 5L, states[["I"]]], digits = 2L),
+  stringsAsFactors = FALSE
+)
+
+## -----------------------------------------------------------------------------
+plot_occupancy <- function(SMM) {
+  withr::with_par(
+    new = list(mar = c(5L, 4L, 1L, 14L) + 0.1),
+    code = {
+      states <- colnames(SMM)[
+        !colnames(SMM) %in% c("Cost", "QALY", "Cycle", "Years")
+      ]
+      pal <- sample(hcl.colors(length(states), palette = "Spectral"))
+      barplot(
+        t(as.matrix(SMM[, states])),
+        xlab = "Cycle", ylab = "States", names.arg = SMM[, "Cycle"],
+        col = pal, border = NA, space = 0L
+      )
+      legend(
+        "topright", legend = states, fill = pal, bty = "n",
+        inset = c(-0.75, 0.0), xpd = TRUE
+      )
+    }
+  )
+}
+plot_occupancy(SMM_base_10years)
+
+## -----------------------------------------------------------------------------
 # convert a Markov trace (matrix) with monthly cycles to an annual summary
 # matrix with cumulative values, as per Dong and Buxton, Table 4
 as_table4 <- function(m_trace) {
@@ -313,13 +371,13 @@ as_table4 <- function(m_trace) {
   m_t4 <- matrix(
     data = c(
       m_trace[, "Years"],
-      m_cum[, "TKR with serious complications"] / 10L,
-      m_cum[, "TKR with minor complications"] / 10L,
-      m_cum[, "Complex revision"] / 10L,
-      m_cum[, "Simple revision"] / 10L,
-      m_trace[, "Death"] / 10L,
-      m_cum[, "Cost"] * 1000L,
-      m_cum[, "QALY"] * 1000L
+      round(m_cum[, "TKR with serious complications"] / 10L, digits = 2L),
+      round(m_cum[, "TKR with minor complications"] / 10L, digits = 2L),
+      round(m_cum[, "Complex revision"] / 10L, digits = 2L),
+      round(m_cum[, "Simple revision"] / 10L, digits = 2L),
+      round(m_trace[, "Death"] / 10L, digits = 2L),
+      round(m_cum[, "Cost"] * 1000L, digits = 2L),
+      round(m_cum[, "QALY"] * 1000L, digits = 2L)
     ),
     dimnames = list(
       NULL,
@@ -345,7 +403,16 @@ as_table4 <- function(m_trace) {
 t4_CS <- as_table4(SMM_base_10years)
 
 ## -----------------------------------------------------------------------------
+as.data.frame(t4_CS)
+
+## -----------------------------------------------------------------------------
 t4_CAS <- as_table4(SMM_CAS_10years)
+
+## -----------------------------------------------------------------------------
+dcost <- t4_CAS[[10L, "Discounted costs (£)"]] / 1000L -
+  t4_CS[[10L, "Discounted costs (£)"]] / 1000L
+dutil <- t4_CAS[[10L, "Discounted QALYs"]] / 1000L -
+  t4_CS[[10L, "Discounted QALYs"]] / 1000L
 
 ## -----------------------------------------------------------------------------
 utility_A_nu <- 0.42
@@ -542,6 +609,32 @@ SMM_CAS_PSA <- SemiMarkovModel$new(
 )
 
 ## -----------------------------------------------------------------------------
+with(data = SMM_base_PSA$modvar_table(), expr = {
+  data.frame(
+    Description = Description,
+    Distribution = Distribution,
+    Mean = round(Mean, digits = 5L),
+    SD = round(SD, digits = 5L),
+    Q2.5 = round(Q2.5, digits = 5L),
+    Q97.5 = round(Q97.5, digits = 5L),
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
+with(data = SMM_CAS_PSA$modvar_table(), expr = {
+  data.frame(
+    Description = Description,
+    Distribution = Distribution,
+    Mean = round(Mean, digits = 5L),
+    SD = round(SD, digits = 5L),
+    Q2.5 = round(Q2.5, digits = 5L),
+    Q97.5 = round(Q97.5, digits = 5L),
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
 dirichletify <- function(Pt, population = 1L) {
   # check argument
   stopifnot(
@@ -626,38 +719,70 @@ for (run in seq_len(nruns)) {
 }
 
 ## -----------------------------------------------------------------------------
-fields <- c(
-  "Cumulative serious complication (%)",
-  "Cumulative complex revision (%)",
-  "Cumulative simple revision (%)"
-)
-t5_CS <- matrix(
-  data = NA_real_, nrow = length(fields), ncol = 4L,
-  dimnames = list(fields, c("Mean", "SD", "Q2.5", "Q97.5"))
-)
-for (f in fields) {
-  t5_CS[[f, "Mean"]] <- mean(t4_CS_PSA[10L, f, ])
-  t5_CS[[f, "SD"]] <- sd(t4_CS_PSA[10L, f, ])
-  t5_CS[[f, "Q2.5"]] <- quantile(t4_CS_PSA[10L, f, ], probs = 0.025)
-  t5_CS[[f, "Q97.5"]] <- quantile(t4_CS_PSA[10L, f, ], probs = 0.975)
-}
+local({
+  t4_CS_PSA_mean <- apply(t4_CS_PSA, MARGIN = c(1L, 2L), FUN = mean)
+  t4_CS_PSA_mean <- apply(
+    t4_CS_PSA_mean, MARGIN = c(1L, 2L), FUN = round, digits = 2L
+  )
+  as.data.frame(t4_CS_PSA_mean)
+})
 
 ## -----------------------------------------------------------------------------
-fields <- c(
-  "Cumulative serious complication (%)",
-  "Cumulative complex revision (%)",
-  "Cumulative simple revision (%)"
-)
-t5_CAS <- matrix(
-  data = NA_real_, nrow = length(fields), ncol = 4L,
-  dimnames = list(fields, c("Mean", "SD", "Q2.5", "Q97.5"))
-)
-for (f in fields) {
-  t5_CAS[[f, "Mean"]] <- mean(t4_CAS_PSA[10L, f, ])
-  t5_CAS[[f, "SD"]] <- sd(t4_CAS_PSA[10L, f, ])
-  t5_CAS[[f, "Q2.5"]] <- quantile(t4_CAS_PSA[10L, f, ], probs = 0.025)
-  t5_CAS[[f, "Q97.5"]] <- quantile(t4_CAS_PSA[10L, f, ], probs = 0.975)
-}
+local({
+  fields <- c(
+    "Cumulative serious complication (%)",
+    "Cumulative complex revision (%)",
+    "Cumulative simple revision (%)"
+  )
+  t5_CS <- matrix(
+    data = NA_real_, nrow = length(fields), ncol = 4L,
+    dimnames = list(fields, c("Mean", "SD", "Q2.5", "Q97.5"))
+  )
+  for (f in fields) {
+    t5_CS[[f, "Mean"]] <- round(mean(t4_CS_PSA[10L, f, ]), digits = 2L)
+    t5_CS[[f, "SD"]] <- round(sd(t4_CS_PSA[10L, f, ]), digits = 2L)
+    t5_CS[[f, "Q2.5"]] <- round(
+      quantile(t4_CS_PSA[10L, f, ], probs = 0.025), digits = 2L
+    )
+    t5_CS[[f, "Q97.5"]] <- round(
+      quantile(t4_CS_PSA[10L, f, ], probs = 0.975), digits = 2L
+    )
+  }
+  as.data.frame(t5_CS)
+})
+
+## -----------------------------------------------------------------------------
+local({
+  t4_CAS_PSA_mean <- apply(t4_CAS_PSA, MARGIN = c(1L, 2L), FUN = mean)
+  t4_CAS_PSA_mean <- apply(
+    t4_CAS_PSA_mean, MARGIN = c(1L, 2L), FUN = round, digits = 2L
+  )
+  as.data.frame(t4_CAS_PSA_mean)
+})
+
+## -----------------------------------------------------------------------------
+local({
+  fields <- c(
+    "Cumulative serious complication (%)",
+    "Cumulative complex revision (%)",
+    "Cumulative simple revision (%)"
+  )
+  t5_CAS <- matrix(
+    data = NA_real_, nrow = length(fields), ncol = 4L,
+    dimnames = list(fields, c("Mean", "SD", "Q2.5", "Q97.5"))
+  )
+  for (f in fields) {
+    t5_CAS[[f, "Mean"]] <- round(mean(t4_CAS_PSA[10L, f, ]), digits = 2L)
+    t5_CAS[[f, "SD"]] <- round(sd(t4_CAS_PSA[10L, f, ]), digits = 2L)
+    t5_CAS[[f, "Q2.5"]] <- round(
+      quantile(t4_CAS_PSA[10L, f, ], probs = 0.025), digits = 2L
+    )
+    t5_CAS[[f, "Q97.5"]] <- round(
+      quantile(t4_CAS_PSA[10L, f, ], probs = 0.975), digits = 2L
+    )
+  }
+  as.data.frame(t5_CAS)
+})
 
 ## -----------------------------------------------------------------------------
 dcost_psa <- t4_CAS_PSA[10L, "Discounted costs (£)", ] / 1000L -
@@ -665,4 +790,28 @@ dcost_psa <- t4_CAS_PSA[10L, "Discounted costs (£)", ] / 1000L -
 dutil_psa <- t4_CAS_PSA[10L, "Discounted QALYs", ] / 1000L -
   t4_CS_PSA[10L, "Discounted QALYs", ] / 1000L
 icer_psa <- dcost_psa / dutil_psa
+
+## -----------------------------------------------------------------------------
+withr::with_par(
+  new = list(mar = c(1L, 2L, 2L, 1L)),
+  code = {
+    plot(
+      dcost_psa ~ dutil_psa,
+      pch = 20L,
+      xlim = c(-0.1, 0.15), ylim = c(-5000.0, 1000.0),
+      axes = FALSE,
+      xlab = "", ylab = ""
+    )
+    axis(side = 1L, pos = 0.0, las = 1L)
+    axis(side = 2L, pos = 0.0, las = 1L)
+    mtext(
+      text = expression(paste(Delta, "QALYs")),
+      side = 2L, adj = 5L / 6L
+    )
+    mtext(
+      text = expression(paste(Delta, "Cost (£)")),
+      side = 3L, adj = 2L / 5L
+    )
+  }
+)
 

@@ -51,18 +51,12 @@ Transition <- R6::R6Class(
     #' Includes operands of these \code{ModVar}s, if they are expressions.
     #' @return A list of \code{ModVar}s.
     modvars = function() {
-      # create lists of input variables and output Modvars
+      # build list, possibly including duplicates
       iv <- c(private$transition.cost)
-      ov <- list()
-      for (v in iv) {
-        if (inherits(v, what = "ModVar")) {
-          ov <- c(ov, v)
-          if (inherits(v, what = "ExprModVar")) {
-            for (o in v$operands()) {
-              ov <- c(ov, o)
-            }
-          }
-        }
+      ov <- iv[which(is_class(iv, what = "ModVar"))]
+      ev <- iv[which(is_class(iv, what = "ExprModVar"))]
+      for (v in ev) {
+        ov <- c(ov, unlist(v$operands()))
       }
       # return the unique list
       return(unique(ov))
@@ -72,8 +66,10 @@ Transition <- R6::R6Class(
     #' @param c Cost associated with the transition.
     #' @return Updated \code{Transition} object.
     set_cost = function(c = 0.0) {
-      abortifnot(inherits(c, what = c("numeric", "ModVar")),
-        message = "Argument 'c' must be of type 'numeric' or 'ModVar'.",
+      abortifnot(
+        !missing(c),
+        inherits(c, what = c("numeric", "ModVar")),
+        message = "Argument 'c' must be defined and 'numeric' or 'ModVar'.",
         class = "invalid_cost"
       )
       private$transition.cost <- c

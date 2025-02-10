@@ -121,5 +121,5 @@ ct <- as.data.frame(table(nw))
 
 ## -----------------------------------------------------------------------------
 names(ct) <- c("n", "frequency")
-knitr::kable(ct)
+ct
 

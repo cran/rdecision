@@ -38,13 +38,9 @@ Digraph <- R6::R6Class(
       # check and set arrows
       abortifnot(
         is.list(A),
-        message = "A must be a list",
-        class = "non-list_arrows"
-      )
-      abortifnot(
         all(is_Arrow(A)),
-        message = "Each 'A' must be an Arrow",
-        class = "non-Arrow_edge"
+        message = "A must be a list of Arrows",
+        class = "invalid_edges"
       )
       # initialize the base Graph class (also checks V)
       super$initialize(V, A)
@@ -359,13 +355,13 @@ Digraph <- R6::R6Class(
     paths = function(s, t) {
       # check arguments
       is <- self$vertex_index(s)
-      if (is.na(is)) {
-        rlang::abort("Argument 's' is not in graph", class = "not_in_graph")
-      }
       it <- self$vertex_index(t)
-      if (is.na(it)) {
-        rlang::abort("Argument 't' is not in graph", class = "not_in_graph")
-      }
+      abortif(
+        is.na(is),
+        is.na(it),
+        message = "Both the source and target nodes must be in graph",
+        class = "not_in_graph"
+      )
       # AA is the adjacency matrix
       AA <- self$digraph_adjacency_matrix(boolean = TRUE)
       # P is current path
@@ -455,19 +451,20 @@ Digraph <- R6::R6Class(
     #' @details Writes a representation of the digraph in the
     #' \code{graphviz} DOT language
     #' (\url{https://graphviz.org/doc/info/lang.html}) for drawing with one
-    #' of the \code{graphviz} tools, including \code{dot} (Gansner, 1993). If
-    #' all nodes have labels, these are used in the graph, otherwise the labels
-    #' are the node indices.
+    #' of the \code{graphviz} tools, including \code{dot} (Gansner, 1993).
+    #' This option is recommended if it is desired to rapidly plot a graph;
+    #' however it gives limited control over details of the appearance. In
+    #' addition, the appearance may vary between calls if the node order changes
+    #' (specifically, if there is no Hamiltonian path). For greater control over
+    #' the appearance of a graph, use the \code{as_gml} function and manipulate
+    #' the graph using igraph or DiagrammeR; please refer to the vignettes for
+    #' examples.
     #' @param rankdir One of "LR" (default), "TB", "RL" or "BT".
     #' @param width of the drawing, in inches
     #' @param height of the drawing, in inches
     #' @return A character vector. Intended for passing to \code{writeLines}
     #' for saving as a text file.
     as_DOT = function(rankdir = "LR", width = 7.0, height = 7.0) {
-      # check whether all nodes have labels
-      vi <- self$vertex_along()
-      nl <- self$vertex_label(vi)
-      nodelab <- all(nchar(x = nl) > 0L)
       # check rankdir argument
       abortifnot(
         rankdir %in% c("LR", "TB", "RL", "BT"),
@@ -480,38 +477,83 @@ Digraph <- R6::R6Class(
         message = "'width' and 'height' must be numeric and > 0",
         class = "invalid_size"
       )
-      # create stream vector (header+edges+footer)
+      # create stream vector
       indent <- "  "
       o <- vector(mode = "character", length = 0L)
       # write header
-      o[[length(o) + 1L]] <- "digraph rdecision {"
+      o <- append(o, "digraph rdecision {")
       # write graph attributes
-      o[[length(o) + 1L]] <- paste0(
+      o <- append(o, paste0(
         indent,
-        "graph [ ",
-        'rankdir = "', rankdir, '"', ", ",
-        'size = "', width, ",", height, '"',
-        " ] ;"
-      )
+        "graph [",
+        'rankdir="', rankdir, '"', ", ",
+        'size="', width, ",", height, '"',
+        "]"
+      ))
+      # write node attributes
+      for (v in self$vertexes()) {
+        label <- v$label()
+        if (nchar(label) > 0L) {
+          o <- append(
+            o,
+            paste0(indent, self$vertex_index(v), ' [label="', label, '"]')
+          )
+        }
+      }
       # write edges
       for (e in self$edges()) {
         s <- e$source()
         t <- e$target()
-        o[[length(o) + 1L]] <- paste(
-          indent,
-          ifelse(nodelab, paste0('"', s$label(), '"'), self$vertex_index(s)),
-          "->",
-          ifelse(nodelab, paste0('"', t$label(), '"'), self$vertex_index(t)),
-          ifelse(
-            nchar(e$label()) > 0L,
-            paste("[", "label = ", paste0('"', e$label(), '"'), "]"),
+        label <- e$label()
+        o <- append(o, paste0(
+          indent, self$vertex_index(s), " -> ", self$vertex_index(t),
+          if (nchar(label) > 0L) {
+            paste0(' [label="', label, '"]')
+          } else {
             ""
-          ),
-          ";"
-        )
+          }
+        ))
       }
       # footer
-      o[[length(o) + 1L]] <- "}"
+      o <- append(o, "}")
+      # return the stream
+      return(o)
+    },
+
+    #' @description Exports the digraph as a Graph Modelling Language (GML)
+    #' stream.
+    #' @details Intended to work with the igraph or DiagrammeR packages, which
+    #' are able to import GML files.
+    #' @returns A GML stream as a character vector.
+    as_gml = function() {
+      # create stream vector
+      o <- vector(mode = "character", length = 0L)
+      # open the graph
+      o <- append(o, "graph [")
+      o <- append(o, "  directed 1")
+      # loop through nodes
+      for (v in self$vertexes()) {
+        o <- append(o, "  node [")
+        o <- append(o, paste("    id", self$vertex_index(v)))
+        label <- v$label()
+        if (nchar(label) > 0L) {
+          o <- append(o, paste0("    label ", '"', label, '"'))
+        }
+        o <- append(o, "  ]")
+      }
+      # loop through edges
+      for (e in self$edges()) {
+        o <- append(o, "  edge [")
+        o <- append(o, paste("    source", self$vertex_index(e$source())))
+        o <- append(o, paste("    target", self$vertex_index(e$target())))
+        label <- e$label()
+        if (nchar(label) > 0L) {
+          o <- append(o, paste0("    label ", '"', label, '"'))
+        }
+        o <- append(o, "  ]")
+      }
+      # close the graph
+      o <- append(o, "]")
       # return the stream
       return(o)
     }

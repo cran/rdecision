@@ -1,5 +1,5 @@
 ## -----------------------------------------------------------------------------
-library(rdecision) # nolint
+library(rdecision)
 
 ## -----------------------------------------------------------------------------
 # nodes
@@ -51,16 +51,25 @@ V <- list(d1, d2, d3,  c1, c2, c3, c4,  t1, t2, t3, t4, t5, t6, t7, t8, t9)
 DT <- DecisionTree$new(V, E)
 
 ## -----------------------------------------------------------------------------
+DT$draw(border = TRUE)
+
+## -----------------------------------------------------------------------------
 # find optimal strategies
 RES <- DT$evaluate()
 RES[, "Payoff"] <- RES[, "Benefit"] - RES[, "Cost"]
 
 ## -----------------------------------------------------------------------------
-RES[, "Run"] <- NULL
-RES[, "Probability"] <- NULL
-RES[, "Utility"] <- NULL
-RES[, "QALY"] <- NULL
-knitr::kable(RES, row.names = FALSE)
+with(data = RES, expr = {
+  data.frame(
+    d1 = d1,
+    d2 = d2,
+    d3 = d3,
+    Cost = Cost,
+    Benefit = Benefit,
+    Payoff = Payoff,
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 imax <- which.max(RES[, "Payoff"])
@@ -68,5 +77,4 @@ popt <- paste(
   RES[[imax, "d1"]], RES[[imax, "d2"]], RES[[imax, "d3"]],
   sep = ";"
 )
-popt <- 42
 

@@ -109,4 +109,36 @@ test_that("modvars are identified", {
   e$set_cost(c = free)
   mv <- e$modvars()
   expect_length(mv, 2L)
+  # add an expression model variable with two operands
+  o1 <- ConstModVar$new("o1", "GBP", 100.0)
+  o2 <- ConstModVar$new("o2", "GBP", 200.0)
+  c1 <- ExprModVar$new("o1+o2", "GBP", rlang::quo(o1 + o2))
+  e$set_cost(c = c1)
+  mv <- e$modvars()
+  expect_length(mv, 4L)
+  d <- vapply(X = mv, FUN.VALUE = "x", FUN = function(v) {
+    return(v$description())
+  })
+  expect_setequal(d, c("fortytwo", "o1+o2", "o1", "o2"))
+})
+
+test_that("graphical representation of the reaction edge is as expected", {
+  # source and target nodes
+  n1 <- ChanceNode$new("c")
+  n2 <- LeafNode$new("n2")
+  # one modvar
+  e <- Reaction$new(n1, n2, p = 0.5, label = "reaction")
+  grDevices::pdf(file = NULL)
+  grid::grid.newpage()
+  vp <- grid::viewport()
+  grid::pushViewport(vp)
+  xs <- grid::unit(0.25, "npc")
+  ys <- grid::unit(0.5, "npc")
+  xt <- grid::unit(0.75, "npc")
+  yt <- grid::unit(0.75, "npc")
+  eg <- e$grob(xs = xs, ys = ys, xt = xt, yt = yt)
+  expect_s3_class(eg, "grob")
+  grid::grid.draw(eg)
+  grid::popViewport()
+  grDevices::dev.off()
 })

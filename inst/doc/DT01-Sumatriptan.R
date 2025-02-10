@@ -1,22 +1,4 @@
 ## -----------------------------------------------------------------------------
-#' @title Write a monetary value
-#' @param x Monetary value, or vector of values
-#' @param p Logical; if TRUE show value to nearest penny, cent etc. If FALSE
-#' show it to the nearest pound, dollar, euro etc.
-#' @noRd
-gbp <- function(x, p = FALSE) {
-  digits <- if (p) 2L else 0L
-  s <- format(
-    x = vapply(X = x, FUN.VALUE = 1.0, FUN = round, digits = digits),
-    digits = NULL,
-    nsmall = digits,
-    scientific = FALSE,
-    big.mark = ","
-  )
-  return(s)
-}
-
-## -----------------------------------------------------------------------------
 library(rdecision)
 
 ## -----------------------------------------------------------------------------
@@ -52,25 +34,24 @@ e1 <- Reaction$new(
   c3, ta, p = p_sumatriptan_recurrence, label = "No recurrence"
 )
 e2 <- Reaction$new(
-  c3, tb, p = 1.0 - p_sumatriptan_recurrence, cost = c_sumatriptan,
-  label = "Relieved 2nd dose"
+  c3, tb, p = NA_real_, cost = c_sumatriptan, label = "Relieved 2nd dose"
 )
 td <- LeafNode$new("D", utility = u_norelief_er, interval = th)
 te <- LeafNode$new("E", utility = u_norelief_endures, interval = th)
 c7 <- ChanceNode$new()
-e3 <- Reaction$new(c7, td, p = 1.0 - p_admitted, label = "Relief")
+e3 <- Reaction$new(c7, td, p = NA_real_, label = "Relief")
 e4 <- Reaction$new(
   c7, te, p = p_admitted, cost = c_admission, label = "Hospitalization"
 )
 
 tc <- LeafNode$new("C", utility = u_norelief_endures, interval = th)
 c4 <- ChanceNode$new()
-e5 <- Reaction$new(c4, tc, p = 1.0 - p_er, label = "Endures attack")
+e5 <- Reaction$new(c4, tc, p = NA_real_, label = "Endures attack")
 e6 <- Reaction$new(c4, c7, p = p_er, cost = c_ed, label = "ER")
 
 c1 <- ChanceNode$new()
 e7 <- Reaction$new(c1, c3, p = p_sumatriptan_relief, label = "Relief")
-e8 <- Reaction$new(c1, c4, p = 1.0 - p_sumatriptan_relief, label = "No relief")
+e8 <- Reaction$new(c1, c4, p = NA_real_, label = "No relief")
 
 # Caffeine/Ergotamine branch
 tf <- LeafNode$new("F", utility = u_relief_norecurrence, interval = th)
@@ -78,25 +59,24 @@ tg <- LeafNode$new("G", utility = u_relief_recurrence, interval = th)
 c5 <- ChanceNode$new()
 e9 <- Reaction$new(c5, tf, p = p_caffeine_recurrence, label = "No recurrence")
 e10 <- Reaction$new(
-  c5, tg, p = 1.0 - p_caffeine_recurrence, cost = c_caffeine,
-  label = "Relieved 2nd dose"
+  c5, tg, p = NA_real_, cost = c_caffeine, label = "Relieved 2nd dose"
 )
 ti <- LeafNode$new("I", utility = u_norelief_er, interval = th)
 tj <- LeafNode$new("J", utility = u_norelief_endures, interval = th)
 c8 <- ChanceNode$new()
-e11 <- Reaction$new(c8, ti, p = 1.0 - p_admitted, label = "Relief")
+e11 <- Reaction$new(c8, ti, p = NA_real_, label = "Relief")
 e12 <- Reaction$new(
   c8, tj, p = p_admitted, cost = c_admission, label = "Hospitalization"
 )
 
 th <- LeafNode$new("H", utility = u_norelief_endures, interval = th)
 c6 <- ChanceNode$new()
-e13 <- Reaction$new(c6, th, p = 1.0 - p_er, label = "Endures attack")
+e13 <- Reaction$new(c6, th, p = NA_real_, label = "Endures attack")
 e14 <- Reaction$new(c6, c8, p = p_er, cost = c_ed, label = "ER")
 
 c2 <- ChanceNode$new()
 e15 <- Reaction$new(c2, c5, p = p_caffeine_relief, label = "Relief")
-e16 <- Reaction$new(c2, c6, p = 1.0 - p_caffeine_relief, label = "No relief")
+e16 <- Reaction$new(c2, c6, p = NA_real_, label = "No relief")
 
 # decision node
 d1 <- DecisionNode$new("d1")
@@ -114,32 +94,38 @@ E <- list(
 )
 
 # tree
-DT <- DecisionTree$new(V, E)
+dt <- DecisionTree$new(V, E)
 
 ## -----------------------------------------------------------------------------
-DT$draw(border = TRUE)
+dt$draw(border = TRUE)
 
 ## -----------------------------------------------------------------------------
-ep <- DT$evaluate(by = "path")
+ep <- dt$evaluate(by = "path")
 
 ## -----------------------------------------------------------------------------
-knitr::kable(
-  ep[, c("Leaf", "Probability", "Cost", "Utility")],
-  align = "lrrr",
-  digits = c(2L, 4L, 2L, 5L),
-  format.args = list(scientific = FALSE)
-)
+with(data = ep, expr = {
+  data.frame(
+    Leaf = Leaf,
+    Probability = round(Probability, digits = 4L),
+    Cost = round(Cost, digits = 2L),
+    Utility = round(Utility, digits = 5L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
-es <- DT$evaluate()
+es <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
-knitr::kable(
-  es[, c("d1", "Cost", "Utility", "QALY")],
-  align = "lrrr",
-  digits = c(2L, 2L, 4L, 4L),
-  format.args = list(scientific = FALSE)
-)
+with(data = es, expr = {
+  data.frame(
+    d1 = d1,
+    Cost = round(Cost, digits = 2L),
+    Utility = round(Utility, digits = 4L),
+    QALY = round(QALY, digits = 4L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 is <- which(es[, "d1"] == "Sumatriptan")
@@ -160,8 +146,7 @@ icer <- delta_c / delta_q
 ## -----------------------------------------------------------------------------
 p_sumatriptan_relief <- p_caffeine_relief + 0.268
 e7$set_probability(p_sumatriptan_relief)
-e8$set_probability(1.0 - p_sumatriptan_relief)
-es <- DT$evaluate()
+es <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
 is <- which(es[, "d1"] == "Sumatriptan")
@@ -180,18 +165,20 @@ delta_q_upper <- qaly_s_upper - qaly_c_upper
 icer_upper <- delta_c_upper / delta_q_upper
 
 ## -----------------------------------------------------------------------------
-knitr::kable(
-  es[, c("d1", "Cost", "Utility", "QALY")],
-  align = "lrrr",
-  digits = c(2L, 2L, 4L, 4L),
-  format.args = list(scientific = FALSE)
-)
+with(data = es, expr = {
+  data.frame(
+    d1 = d1,
+    Cost = round(Cost, digits = 2L),
+    Utility = round(Utility, digits = 4L),
+    QALY = round(QALY, digits = 4L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 p_sumatriptan_relief <- p_caffeine_relief + 0.091
 e7$set_probability(p_sumatriptan_relief)
-e8$set_probability(1.0 - p_sumatriptan_relief)
-es <- DT$evaluate()
+es <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
 is <- which(es[, "d1"] == "Sumatriptan")
@@ -210,10 +197,13 @@ delta_q_lower <- qaly_s_lower - qaly_c_lower
 icer_lower <- delta_c_lower / delta_q_lower
 
 ## -----------------------------------------------------------------------------
-knitr::kable(
-  es[, c("d1", "Cost", "Utility", "QALY")],
-  align = "lrrr",
-  digits = c(2L, 2L, 4L, 4L),
-  format.args = list(scientific = FALSE)
-)
+with(data = es, expr = {
+  data.frame(
+    d1 = d1,
+    Cost = round(Cost, digits = 2L),
+    Utility = round(Utility, digits = 4L),
+    QALY = round(QALY, digits = 4L),
+    stringsAsFactors = FALSE
+  )
+})
 

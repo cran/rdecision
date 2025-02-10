@@ -90,6 +90,12 @@ test_that("arborescences that are not decision trees are rejected", {
   expect_error(DT$evaluate(N = "forty two"), class = "N_not_numeric")
   expect_error(DT$evaluate(by = 42L), class = "by_not_character")
   expect_error(DT$evaluate(by = "forty two"), class = "by_invalid")
+  expect_error(DT$evaluate(setvars = 42L), class = "setvars_not_character")
+  expect_error(DT$evaluate(setvars = "mode"), class = "setvars_invalid")
+  expect_silent(DT$evaluate(setvars = "q2.5"))
+  expect_silent(DT$evaluate(setvars = "q50"))
+  expect_silent(DT$evaluate(setvars = "q97.5"))
+  expect_silent(DT$evaluate(setvars = "current"))
   # tornado with no model variables
   grDevices::pdf(file = NULL)
   expect_null(DT$tornado(index = list(e1), ref = list(e4)))
@@ -159,6 +165,10 @@ test_that("simple decision trees are modelled correctly", {
   expect_silent(DT$draw(border = TRUE))
   grDevices::dev.off()
   # strategy validity
+  expect_true(DT$is_strategy(list(e1)))
+  expect_true(DT$is_strategy(e1))
+  expect_false(DT$is_strategy(e2))
+  expect_true(DT$is_strategy(list(e4)))
   expect_false(DT$is_strategy(list(e2, e3)))
   expect_false(DT$is_strategy(list()))
   expect_false(DT$is_strategy(list(e1, e4)))
@@ -177,7 +187,7 @@ test_that("simple decision trees are modelled correctly", {
   S <- DT$strategy_table()
   expect_identical(nrow(S), 2L)
   expect_setequal(rownames(S), c("e1", "e4"))
-  S <- DT$strategy_table("label", select = list(e1))
+  S <- DT$strategy_table("label", select = e1)
   expect_identical(S[[1L, "d.1"]], "e1")
   expect_setequal(rownames(S), "e1")
   # evaluate valid walks
@@ -287,6 +297,50 @@ test_that("probabilities of NA are detected and checked", {
   expect_intol(with(dte, Probability[Leaf == "l4"]), 0.6, 0.01)
 })
 
+# ICER with discounted utility
+test_that("ICER with discounted utility is as expected", {
+  # variables
+  ur <- 1.0
+  unr <- 0.7
+  dt <- as.difftime(tim = 365.25 * 2.0, units = "days")
+  r <- 3.5 / 100.0
+  pa <- 0.8
+  pb <- 0.7
+  ca <- 10000.0
+  cb <- 8000.0
+  # tree for treatment A versus treatment B, with effect over 2 years
+  a_resp <- LeafNode$new(label = "R", utility = ur, interval = dt, ru = r)
+  b_resp <- LeafNode$new(label = "R", utility = ur, interval = dt, ru = r)
+  a_noresp <- LeafNode$new(label = "NR", utility = unr, interval = dt, ru = r)
+  b_noresp <- LeafNode$new(label = "NR", utility = unr, interval = dt, ru = r)
+  a_effect <- ChanceNode$new()
+  b_effect <- ChanceNode$new()
+  d <- DecisionNode$new(label = "Treatment")
+  txa <- Action$new(source = d, target = a_effect, label = "a", cost = ca)
+  txb <- Action$new(source = d, target = b_effect, label = "b", cost = cb)
+  ay <- Reaction$new(source = a_effect, target = a_resp, p = pa)
+  an <- Reaction$new(source = a_effect, target = a_noresp, p = NA_real_)
+  by <- Reaction$new(source = b_effect, target = b_resp, p = pb)
+  bn <- Reaction$new(source = b_effect, target = b_noresp, p = NA_real_)
+  dt <- DecisionTree$new(
+    V = list(d, a_effect, b_effect, a_resp, b_resp, a_noresp, b_noresp),
+    E = list(txa, txb, ay, an, by, bn)
+  )
+  # evaluate
+  res <- dt$evaluate(by = "run")
+  # observed ICER
+  dc <- res[[1L, "Cost.a"]] - res[[1L, "Cost.b"]]
+  dq <- res[[1L, "QALY.a"]] - res[[1L, "QALY.b"]]
+  icero <- dc / dq
+  # expected ICER
+  dc <- ca - cb
+  df <- (1.0 - exp(-r * 2.0)) / r
+  qa <- pa * ur * df + (1.0 - pa) * unr * df
+  qb <- pb * ur * df + (1.0 - pb) * unr * df
+  icere <- dc / (qa - qb)
+  expect_intol(icero, icere, tol = 1.0)
+})
+
 # test with utility > 1
 test_that("decision trees with utility > 1 are supported", {
   # fictitious scenario
@@ -359,6 +413,11 @@ test_that("decision trees with utility > 1 are supported", {
 test_that("paths common to >1 strategy are analyzed", {
   # variables
   p.disease <- BetaModVar$new("P(Test+ve)", "P", alpha = 10.0, beta = 40.0)
+  c.drug <- ConstModVar$new("Drug cost", "GBP", 900.0)
+  c.pharm <- ConstModVar$new("Pharmacy cost", "GBP", 100.0)
+  c.treat <- ExprModVar$new(
+    "Treatment cost", "GBP", rlang::quo(c.drug + c.pharm)
+  )
   # create tree
   c1 <- ChanceNode$new("c1")
   d1 <- DecisionNode$new("d1")
@@ -369,13 +428,21 @@ test_that("paths common to >1 strategy are analyzed", {
   t4 <- LeafNode$new("discharge")
   e1 <- Reaction$new(c1, d1, p = p.disease, cost = 0.0, label = "test +ve")
   e2 <- Reaction$new(c1, t4, p = NA_real_, cost = 0.0, label = "test -ve")
-  e3 <- Action$new(d1, t1, label = "treat", cost = 1000.0)
+  e3 <- Action$new(d1, t1, label = "treat", cost = c.treat)
   e4 <- Action$new(d1, d2, label = "manage", cost = 0.0)
   e5 <- Action$new(d2, t2, label = "conservatively", cost = 200.0)
   e6 <- Action$new(d2, t3, label = "watch", cost = 50.0)
   DT <- DecisionTree$new(
     V = list(c1, d1, d2, t1, t2, t3, t4),
     E = list(e1, e2, e3, e4, e5, e6)
+  )
+  # check the modvar table
+  mvtab <- DT$modvar_table()
+  expect_s3_class(mvtab, "data.frame")
+  expect_identical(nrow(mvtab), 4L)
+  expect_setequal(
+    mvtab[, "Description"],
+    c("Treatment cost", "Drug cost", "Pharmacy cost", "P(Test+ve)")
   )
   # there are 8 paths walked by the strategies (two end on leaf t1, one each on
   # t2 and t3 and four on t4) out of 16 possible (4 paths and 4 strategies);
@@ -485,4 +552,233 @@ test_that("long node labels are not clipped", {
   grDevices::pdf(NULL, width = 7.0, height = 5.0)
   expect_no_condition(dt$draw(border = TRUE, fontsize = 10.0))
   grDevices::dev.off()
+})
+
+# test of tornado plot and thresholding
+test_that("tornado plots are as expected", {
+  # construct a decision tree
+  v <- list(
+    t1 = LeafNode$new("t1"),
+    t2 = LeafNode$new("t2"),
+    t3 = LeafNode$new("t3"),
+    t4 = LeafNode$new("t4"),
+    c1 = ChanceNode$new(),
+    c2 = ChanceNode$new(),
+    d1 = DecisionNode$new("d1")
+  )
+  e <- list(
+    e1 = Action$new(source = v[["d1"]], target = v[["c1"]], label = "a"),
+    e2 = Action$new(source = v[["d1"]], target = v[["c2"]], label = "b"),
+    e3 = Reaction$new(source = v[["c1"]], target = v[["t1"]]),
+    e4 = Reaction$new(source = v[["c1"]], target = v[["t2"]]),
+    e5 = Reaction$new(source = v[["c2"]], target = v[["t3"]]),
+    e6 = Reaction$new(source = v[["c2"]], target = v[["t4"]])
+  )
+  dt <- DecisionTree$new(V = v, E = e)
+  # add model variables for probabilities, costs & utilities at chance nodes
+  pcomp <- 0.5
+  p1 <- BetaModVar$new(
+    "c1", "probability", alpha = pcomp * 1000L, beta = (1.0 - pcomp) * 1000L
+  )
+  e[["e3"]]$set_probability(p = p1)
+  e[["e4"]]$set_probability(p = NA_real_)
+  pint <- 0.6
+  p2 <- BetaModVar$new(
+    "c2", "probability", alpha = pint * 100L, beta = (1.0 - pint) * 100L
+  )
+  e[["e5"]]$set_probability(p = p2)
+  e[["e6"]]$set_probability(p = NA_real_)
+  # add costs
+  ccomp <- 1000.0
+  cfail <- 100.0
+  e[["e3"]]$set_cost(c = ccomp)
+  e[["e4"]]$set_cost(c = ccomp + cfail)
+  cint <- 2500.0
+  e[["e5"]]$set_cost(c = cint)
+  e[["e6"]]$set_cost(c = cint + cfail)
+  # time horizon
+  th <- as.difftime(365.25, units = "days")
+  v[["t1"]]$set_interval(th)
+  v[["t2"]]$set_interval(th)
+  v[["t3"]]$set_interval(th)
+  v[["t4"]]$set_interval(th)
+  # set utilities
+  ucomps <- 0.7
+  ucompf <- 0.6
+  v[["t1"]]$set_utility(ucomps)
+  v[["t2"]]$set_utility(ucompf)
+  uints <- 0.8
+  uintf <- 0.6
+  v[["t3"]]$set_utility(uints)
+  v[["t4"]]$set_utility(uintf)
+
+  # check point estimate calculation
+  edc <- (cint * pint + (cint + cfail) * (1.0 - pint)) -
+    (ccomp * pcomp + (ccomp + cfail) * (1.0 - pcomp))
+  edq <- (uints * pint + uintf * (1.0 - pint)) -
+    (ucomps * pcomp + ucompf * (1.0 - pcomp))
+  eicer <- edc / edq # ~ 21,g00 GBP / QALY for the given costs and utilities
+  o <- dt$evaluate()
+  with(data = o, expr = {
+    odc <- Cost[[which(d1 == "b")]] - Cost[[which(d1 == "a")]]
+    odq <- Utility[[which(d1 == "b")]] - Utility[[which(d1 == "a")]]
+    oicer <- odc / odq
+    expect_intol(odc, edc, tol = 1.0)
+    expect_intol(odq, edq, tol = 0.01)
+    expect_intol(oicer, eicer, tole = 10.0)
+  })
+
+  # tornado
+  grDevices::pdf(file = NULL)
+  expect_error(dt$tornado(), class = "missing_strategy")
+  expect_error(
+    dt$tornado(index = list(e[["e1"]]), ref = list(e[["e3"]])),
+    class = "invalid_strategy"
+  )
+  expect_error(
+    dt$tornado(index = e[["e1"]], ref = e[["e3"]]),
+    class = "invalid_strategy"
+  )
+  expect_error(
+    dt$tornado(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "survival"
+    ),
+    class = "invalid_outcome"
+  )
+  expect_error(
+    dt$tornado(index = list(e[["e1"]]), ref = list(e[["e2"]]), draw = 42L),
+    class = "invalid_draw"
+  )
+  expect_error(
+    dt$tornado(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]), exclude = 42L, draw = TRUE
+    ),
+    class = "exclude_not_list"
+  )
+  expect_error(
+    dt$tornado(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]),
+      exclude = list("c1", "cx"), draw = TRUE
+    ),
+    class = "exclude_element_not_modvar"
+  )
+  expect_no_condition(
+    dt$tornado(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]),
+      exclude = list(p1$description()), draw = FALSE
+    )
+  )
+  expect_no_condition(
+    dt$tornado(index = e[["e1"]], ref = e[["e2"]], draw = FALSE)
+  )
+  to <- dt$tornado(
+    index = list(e[["e1"]]), ref = list(e[["e2"]]), draw = TRUE
+  )
+  with(data = to, expr = {
+    # as p1 increases, the cost difference increases
+    expect_lt(
+      object = outcome.min[[which(Description == "c1")]],
+      expected = outcome.max[[which(Description == "c1")]]
+    )
+    # point estimate cost saving must lie in the interval
+    expect_between(
+      object = edc,
+      lower = outcome.min[[which(Description == "c1")]],
+      upper = outcome.max[[which(Description == "c1")]]
+    )
+    # as p2 increases, the cost difference decreases
+    expect_gt(
+      object = outcome.min[[which(Description == "c2")]],
+      expected = outcome.max[[which(Description == "c2")]]
+    )
+    # point estimate cost saving must lie in the interval
+    expect_between(
+      object = edc,
+      lower = outcome.max[[which(Description == "c2")]],
+      upper = outcome.min[[which(Description == "c2")]]
+    )
+  })
+  to <- dt$tornado(
+    index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "ICER"
+  )
+  with(data = to, expr = {
+    # as p1 increases, the ICER increases
+    expect_lt(
+      object = outcome.min[[which(Description == "c1")]],
+      expected = outcome.max[[which(Description == "c1")]]
+    )
+    # point estimate ICER must lie in the interval
+    expect_between(
+      object = eicer,
+      lower = outcome.min[[which(Description == "c1")]],
+      upper = outcome.max[[which(Description == "c1")]]
+    )
+    # as p2 increases, the ICER decreases
+    expect_gt(
+      object = outcome.min[[which(Description == "c2")]],
+      expected = outcome.max[[which(Description == "c2")]]
+    )
+    # point estimate ICER must lie in the interval
+    expect_between(
+      object = eicer,
+      lower = outcome.max[[which(Description == "c2")]],
+      upper = outcome.min[[which(Description == "c2")]]
+    )
+  })
+  grDevices::dev.off()
+
+  # tests of thresholding
+  expect_error(
+    dt$threshold(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "ICER",
+      mvd = p2$description(),
+      a = pcomp, b = 0.7,
+      lambda = -1.0, tol = 0.001
+    ),
+    class = "invalid_lambda"
+  )
+  expect_error(
+    dt$threshold(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "ICER",
+      mvd = p2$description(),
+      a = pcomp, b = 0.02,
+      lambda = 20000.0, tol = 0.001
+    ),
+    class = "invalid_brackets"
+  )
+  expect_error(
+    dt$threshold(
+      index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "ICER",
+      mvd = p2$description(),
+      a = pcomp, b = 0.8,
+      lambda = 20000.0, tol = 0.001, nmax = 5L
+    ),
+    class = "convergence_failure"
+  )
+  # icer threshold (should be ~61.2% to reduce ICER to WTP threshold)
+  pintt <- dt$threshold(
+    index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "ICER",
+    mvd = p2$description(),
+    a = pcomp, b = 0.8,
+    lambda = 20000.0, tol = 0.0001
+  )
+  tdc <- (cint * pintt + (cint + cfail) * (1.0 - pintt)) -
+    (ccomp * pcomp + (ccomp + cfail) * (1.0 - pcomp))
+  tdq <- (uints * pintt + uintf * (1.0 - pintt)) -
+    (ucomps * pcomp + ucompf * (1.0 - pcomp))
+  ticer <- tdc / tdq
+  expect_intol(ticer, 20000.0, tol = 10.0)
+  # cost saving threshold (cost of intervention must fall to 1010)
+  mvcint_s <- ConstModVar$new("", "", cint)
+  mvcint_f <- ExprModVar$new("", "", quo = rlang::quo(mvcint_s + cfail))
+  e[["e5"]]$set_cost(c = mvcint_s)
+  e[["e6"]]$set_cost(c = mvcint_f)
+  cintt <- dt$threshold(
+    index = list(e[["e1"]]), ref = list(e[["e2"]]), outcome = "saving",
+    mvd = mvcint_s$description(),
+    a = pcomp, b = cint, tol = 0.0001
+  )
+  tdc <- (cintt * pint + (cintt + cfail) * (1.0 - pint)) -
+    (ccomp * pcomp + (ccomp + cfail) * (1.0 - pcomp))
+  expect_intol(tdc, 0.0, tol = 1.0)
 })

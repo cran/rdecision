@@ -1,3 +1,119 @@
+# rdecision 1.3.0
+
+* Added rhub workflow to git repository.
+* Increased minimum version of R in DESCRIPTION to 3.6.0 to be consistent with
+  functions `str2lang` and `hcl.colors` which require it, and added backport
+  linter to list of linters to identify whether the minimum version of R is
+  required to be changed in future builds.
+* Added packages `rmarkdown` and `igraph` to `VignetteBuilder` field of
+  DESCRIPTION because these are required to build the vignettes.
+* Changed internal functions `abortif` and `abortifnot` to use base R rather
+  then `rlang`. Replaced legacy calls to rlang::abort in classes with calls
+  to `abortif` or `abortifnot`.
+* Added utility discount rate argument to `LeafNode` class, and modified
+  method `QALY` in `LeafNode` to calculate QALYs gained, assuming present
+  value of future utility under a continuous discount assumption.
+  Revised documentation of `DecisionTree` and `LeafNode` to clarify the
+  timing assumptions used by `rdecision` in decision tree modelling (that
+  all costs are incurred at time t = 0, and that QALYs are gained over the
+  time horizons defined in the leaf nodes).
+* Added citation to O'Mahony et al (2015) to HIV vignette, and `SemiMarkovModel`
+  and `DecisionTree` documentation.
+* Calling methods `set_cost` and `set_utility` in class `MarkovState` without
+  an argument is trapped as an error.
+* Calling method `set_cost` in class `Transition` without an argument is
+  trapped as an error.
+* Arguments `index` and `ref` in the `tornado` method of `DecisionTree` may
+  now each be expressed as a single Action edge, rather than a list of action
+  edges, if there is one decision node in the tree. As many decision problems
+  are a choice between two strategies, this is a common usage of `tornado`,
+  and will lead to more compact code. Method `is_strategy` also modified to
+  permit compact notation of index and reference strategies.
+* Decision tree drawing algorithm improved to place leaf node labels to the
+  right of the symbol, and to accurately calculate margin sizes required to
+  accommodate symbols and labels efficiently. Node and edge grid drawing
+  functions moved to classes for those objects.
+* Added package qualifier for function dev.size in grDevices, and functions
+  abline, axis, rect, strwidth and text in package graphics.
+* Moved code to plot a tornado diagram into 'utils.R` to make it available
+  for creating such diagrams given any input source (e.g., Markov models),
+  rather than restricting its use to `ModVar`s in decision trees.
+* Added vignette `SM00`, a narrative explanation of replicating Sonnenberg 
+  and Beck's three-state model of people having a prosthetic heart valve. 
+  Removed dependency of the package readme file on test-model-Lifestyle.R
+  and test-model-PHV.R, and revised, simplified and corrected the readme
+  file.
+* Removed dependency on external file for vignette DT00 by direct inclusion of
+  model code from test-model-Lifestyle.R. Test expectations replaced by
+  `stopifnot` assertions to ensure that the vignette model results agree with
+  published values. Replaced calls to knitr::kable with base R table output
+  for purled output.
+* Removed dependency on external file for vignette DT01 by direct inclusion of
+  model code from test-model-Sumatriptan.R. Test expectations replaced by
+  `stopifnot` assertions to ensure that the vignette model results agree with
+  published values. Replaced calls to knitr::kable with base R table output
+  for purled output.
+* Removed dependency on external file for vignette DT03 by direct inclusion of
+  model code from test-model-ShaleGas.R. Test expectations replaced by
+  `stopifnot` assertions to ensure that the vignette model results agree with
+  published values. Replaced calls to knitr::kable with base R table output
+  for purled output.
+* Removed dependency on external file for vignette GT01 by direct inclusion of
+  model code from test-model-BurgerRun.R. Test expectations replaced by
+  `stopifnot` assertions to ensure that the vignette model results agree with
+  published values. Replaced calls to knitr::kable with base R table output
+  for purled output.
+* Removed dependency on external R files from vignette SM02-TKR by direct
+  inclusion of model code from test-model-SM02.R. Test expectations replaced
+  by `stopifnot` assertions in the vignette to ensure that vignette model
+  results agree with published values. Removed test-model-SM02.R from
+  testthat folder. Replaced calls to pander and knitr::kable with base R table
+  output so that tables and plots are displayed when purled code is executed
+  using source with echo.
+* Removed dependency on external R files from vignette DT02-Tegaderm by direct
+  inclusion of model code from test-model-Tegaderm.R. Test expectations replaced
+  by `stopifnot` assertions in the vignette to ensure that vignette model
+  results agree with published values. Removed test-model-Tegaderm.R from
+  testthat folder and added extra tests to test-DecisionTree. Replaced calls to
+  pander and knitr::kable with base R table output so that tables and plots are
+  displayed when purled code is executed using source with echo.
+* Removed dependency on external R files from vignette SM01-HIV by direct
+  inclusion of model code from test-model-AZT.R. Test expectations replaced by
+  `stopifnot` assertions in the vignette to ensure that vignette model results
+  agree with published values. Removed test-model-AZT.R from testthat folder.
+  This is because some package build and check environments break during
+  vignette building if the vignette R markdown refers to external scripts.
+* Moved function `gbp` from vutils.R (in vignettes) to utils.R, and removed
+  vutils.R. This function is now available to the package, and vignettes no
+  longer need to refer to it in an external file. Removed functions
+  `gv2png` and `placeholder` which are no longer required due to use of
+  `igraph` for drawing models.
+* Removed suggested package dependency on `DiagrammeR` and added a suggested
+  package dependency on `igraph`. Diagrams of Markov models in package vignettes
+  and readme file are now drawn with package `igraph`. Extra code is required
+  to produce desired appearance, compared with using GraphViz, but the resultant
+  image files are compact and can be generated without the need for a command
+  line tool.
+* Removed argument `expressions` from `modvar_table` in classes `DecisionTree`
+  and `SemiMarkovModel`. This is because operands of expressions are included
+  in the table, and it makes no sense to exclude expression model variables
+  which depend on those operands.
+* Modified `modvars` function in various classes to use vectorization. Added
+  to base classes `Node` and `Edge` to avoid type checks.
+* Removed name attributes from internal representation of node and edge lists
+  provided directly or indirectly to class `Graph`. This was causing errors
+  under certain circumstances when creating graphs with named lists, e.g., 
+  `g <- Graph(V = list(a = nodea, b = nodeb), E = list(e = edgee))` because
+  internal graph logic tests using `identical` gave false negatives.  
+* Added methods `as_gml` to classes `Graph` and `Digraph` for exporting of
+  graphs in the Graph Modelling Language (GML). Graph representations written
+  in this format can be imported to other packages, such as `igraph` to
+  permit modification of nodes, edges and their attributes.
+* Added parameters `rankdir`, `width` and `height` to function `as_DOT` in
+  `Graph` for consistency with function of the same name in `Digraph`. Removed
+  requirement for all nodes to have labels before using them by identifying
+  nodes with their ID, and using the `label` attribute in the file.
+
 # rdecision 1.2.1
 
 * Added fields URL and BugReports to DESCRIPTION file, linking to GitHub

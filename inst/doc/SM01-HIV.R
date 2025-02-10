@@ -1,22 +1,4 @@
 ## -----------------------------------------------------------------------------
-#' @title Write a monetary value
-#' @param x Monetary value, or vector of values
-#' @param p Logical; if TRUE show value to nearest penny, cent etc. If FALSE
-#' show it to the nearest pound, dollar, euro etc.
-#' @noRd
-gbp <- function(x, p = FALSE) {
-  digits <- if (p) 2L else 0L
-  s <- format(
-    x = vapply(X = x, FUN.VALUE = 1.0, FUN = round, digits = digits),
-    digits = NULL,
-    nsmall = digits,
-    scientific = FALSE,
-    big.mark = ","
-  )
-  return(s)
-}
-
-## -----------------------------------------------------------------------------
 library(rdecision)
 
 ## -----------------------------------------------------------------------------
@@ -100,62 +82,77 @@ Ptm <- matrix(
 )
 
 ## -----------------------------------------------------------------------------
-#' @title Create a placeholder image in a png file
-#' @description Draws a rectangle with a diagonal using the grid package.
-#' @param pngfile name of png file to create.
-#' @param width width of image in pixels
-#' @param height height of image in pixels
-#' @return Name of the png file written to.
-#' @noRd
-placeholder <- function(pngfile = tempfile(fileext = ".png"), width = 480L,
-                        height = 320L) {
-  grDevices::png(pngfile, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.move.to(
-    x = grid::unit(0.0, "npc"),
-    y = grid::unit(0.0, "npc")
+local({
+  # create an igraph object
+  gml <- m$as_gml()
+  gmlfile <- tempfile(fileext = ".gml")
+  writeLines(gml, con = gmlfile)
+  ig <- igraph::read_graph(gmlfile, format = "gml")
+  # define vertex positions
+  yv <- c(A = 1.0, B = 1.0 / 3.0, C = -1.0 / 3.0, D = -1.0)
+  # set vertex positions
+  layout <- matrix(
+    data = c(
+      0L, 0L, 0L, 0L,
+      vapply(X = igraph::V(ig), FUN.VALUE = 1.0, FUN = function(v) {
+        lbl <- igraph::vertex_attr(ig, "label", v)
+        return(yv[[lbl]])
+      })
+    ),
+    byrow = FALSE,
+    ncol = 2L
   )
-  grid::grid.line.to(
-    x = grid::unit(1.0, "npc"),
-    y = grid::unit(1.0, "npc")
+  # define edge curvatures
+  cm <- matrix(
+    data = 0.0, nrow = 4L, ncol = 4L,
+    dimnames = list(LETTERS[seq(4L)], LETTERS[seq(4L)])
   )
-  grid::grid.move.to(
-    x = grid::unit(0.0, "npc"),
-    y = grid::unit(1.0, "npc")
+  cm[["A", "D"]] <- 1.5
+  cm[["A", "C"]] <- 1.0
+  cm[["B", "D"]] <- -1.0
+  # set edge curvatures
+  curves <- vapply(X = igraph::E(ig), FUN.VALUE = 1.0, FUN = function(e) {
+    # find source and target labels
+    trg <- igraph::head_of(ig, e)
+    trgl <- igraph::vertex_attr(ig, name = "label", index = trg)
+    src <- igraph::tail_of(ig, e)
+    srcl <- igraph::vertex_attr(ig, name = "label", index = src)
+    cr <- cm[[srcl, trgl]]
+    return(cr)
+  })
+  # plot the igraph
+  withr::with_par(
+    new = list(
+      oma = c(1L, 1L, 1L, 1L),
+      mar = c(1L, 1L, 1L, 1L),
+      xpd = NA
+    ),
+    code = {
+      plot(
+        ig,
+        rescale = FALSE, asp = 0L,
+        vertex.color = "white", vertex.label.color = "black",
+        edge.color = "black", edge.curved = curves,
+        edge.arrow.size = 0.75,
+        frame = FALSE,
+        layout = layout,
+        loop.size = 0.8
+      )
+    }
   )
-  grid::grid.line.to(
-    x = grid::unit(1.0, "npc"),
-    y = grid::unit(0.0, "npc")
-  )
-  invisible(grDevices::dev.off())
-  return(pngfile)
-}
-
-#' @title Render a DOT format graph as a png file.
-#' @description Uses the \code{dot} command line tool from the graphviz project,
-#' if it is available on the host system, or creates a placeholder image if not.
-#' @param dot GraphViz dot representation in character vector form.
-#' @param pngfile path of png file to create.
-#' @return pathname of the png file created (including extension).
-#' @noRd
-gv2png <- function(dot, pngfile = tempfile(fileext = ".png")) {
-  cmddot <- Sys.which("dot")
-  if (nchar(cmddot["dot"]) > 0L) {
-    dotfile <- tempfile(fileext = ".gv")
-    writeLines(dot, con = dotfile)
-    system2(command = cmddot["dot"], args = c("-Tpng", "-o", pngfile, dotfile))
-  } else {
-    pngfile <- placeholder(pngfile = pngfile)
-  }
-  return(pngfile)
-}
+})
 
 ## -----------------------------------------------------------------------------
-# images created with dot are more compact than DiagrammeR.
-pngfile <- gv2png(
-  dot = m$as_DOT(rankdir = "TB", width = 7.0, height = 7.0)
-)
-knitr::include_graphics(pngfile)
+with(data = as.data.frame(Ptm), expr = {
+  data.frame(
+    A = round(A, digits = 3L),
+    B = round(B, digits = 3L),
+    C = round(C, digits = 3L),
+    D = round(D, digits = 3L),
+    row.names = row.names(Ptm),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 # function to run model for 20 years of monotherapy
@@ -183,6 +180,20 @@ el.mono <- sum(MT.mono$QALY)
 cost.mono <- sum(MT.mono$Cost)
 
 ## -----------------------------------------------------------------------------
+with(data = MT.mono, expr = {
+  data.frame(
+    Years = Years,
+    A = round(A, digits = 0L),
+    B = round(B, digits = 0L),
+    C = round(C, digits = 0L),
+    D = round(D, digits = 0L),
+    Cost = round(Cost, digits = 0L),
+    QALY = round(QALY, digits = 3L),
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
 # annual probabilities modified by treatment effect
 pAB <- RR * nAB / nA
 pAC <- RR * nAC / nC
@@ -201,6 +212,18 @@ Ptc <- matrix(
     source = c("A", "B", "C", "D"), target = c("A", "B", "C", "D")
   )
 )
+
+## -----------------------------------------------------------------------------
+with(data = as.data.frame(Ptc), expr = {
+  data.frame(
+    A = round(A, digits = 3L),
+    B = round(B, digits = 3L),
+    C = round(C, digits = 3L),
+    D = round(D, digits = 3L),
+    row.names = row.names(Ptc),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 # function to run model for 2 years of combination therapy and 18 of monotherapy
@@ -245,6 +268,20 @@ MT.comb <- run_comb(Ptm, cAm, cBm, cCm, Ptc, cAc, cBc, cCc)
 el.comb <- sum(MT.comb$QALY)
 cost.comb <- sum(MT.comb$Cost)
 icer <- (cost.comb - cost.mono) / (el.comb - el.mono)
+
+## -----------------------------------------------------------------------------
+with(data = MT.comb, expr = {
+  data.frame(
+    Years = Years,
+    A = round(A, digits = 0L),
+    B = round(B, digits = 0L),
+    C = round(C, digits = 0L),
+    D = round(D, digits = 0L),
+    Cost = round(Cost, digits = 0L),
+    QALY = round(QALY, digits = 3L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 MT.mono.hcc <- run_mono(Ptm, cAm, cBm, cCm, hcc = TRUE)

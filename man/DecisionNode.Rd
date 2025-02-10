@@ -22,6 +22,7 @@ Andrew J. Sims \email{andrew.sims@newcastle.ac.uk}
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-DecisionNode-new}{\code{DecisionNode$new()}}
+\item \href{#method-DecisionNode-grob}{\code{DecisionNode$grob()}}
 \item \href{#method-DecisionNode-clone}{\code{DecisionNode$clone()}}
 }
 }
@@ -29,6 +30,7 @@ Andrew J. Sims \email{andrew.sims@newcastle.ac.uk}
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="rdecision" data-topic="Node" data-id="label"><a href='../../rdecision/html/Node.html#method-Node-label'><code>rdecision::Node$label()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="rdecision" data-topic="Node" data-id="modvars"><a href='../../rdecision/html/Node.html#method-Node-modvars'><code>rdecision::Node$modvars()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="rdecision" data-topic="Node" data-id="type"><a href='../../rdecision/html/Node.html#method-Node-type'><code>rdecision::Node$type()</code></a></span></li>
 </ul>
 </details>
@@ -54,6 +56,31 @@ name in a data frame.}
 }
 \subsection{Returns}{
 A new \code{DecisionNode} object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DecisionNode-grob"></a>}}
+\if{latex}{\out{\hypertarget{method-DecisionNode-grob}{}}}
+\subsection{Method \code{grob()}}{
+Creates a grid::grob for drawing a decision node.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DecisionNode$grob(x, y, bb = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{x coordinate of the node, unit object.}
+
+\item{\code{y}}{y coordinate of the node, unit object.}
+
+\item{\code{bb}}{Logical. If TRUE, function returns the bounding box.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A grob containing the symbol and label, or a bounding box
+as a grid::unit vector with 4 values: left, right, bottom, top.
 }
 }
 \if{html}{\out{<hr>}}

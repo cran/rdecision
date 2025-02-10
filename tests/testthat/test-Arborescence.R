@@ -3,15 +3,15 @@ test_that("incorrect node and edge types are rejected", {
   n1 <- Node$new()
   n2 <- Node$new()
   a1 <- Arrow$new(n1, n2)
-  expect_error(Arborescence$new(n1, list(a1)), class = "non-list_vertices")
-  expect_error(Arborescence$new(list(n1, n2), a1), class = "non-list_arrows")
+  expect_error(Arborescence$new(n1, list(a1)), class = "invalid_vertexes")
+  expect_error(Arborescence$new(list(n1, n2), a1), class = "invalid_edges")
   expect_error(
     Arborescence$new(list(n1, 42L), list(a1)),
-    class = "non-Node_vertex"
+    class = "invalid_vertexes"
   )
   expect_error(
     Arborescence$new(list(n1, n2), list(a1, 42L)),
-    class = "non-Arrow_edge"
+    class = "invalid_edges"
   )
 })
 
@@ -39,6 +39,7 @@ test_that("graphs that are not arborescences are rejected", {
   e2 <- Arrow$new(n1, n3)
   a <- Arborescence$new(V = list(n1, n2, n3), A = list(e1, e2))
   expect_true(a$is_tree())
+  expect_true(a$is_polytree())
   expect_identical(a$root(), n1)
   expect_true(a$is_root(n1))
   expect_identical(a$is_root(list(n1, n2, n3)), c(TRUE, FALSE, FALSE))

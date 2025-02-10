@@ -26,7 +26,10 @@ Reaction <- R6::R6Class(
     #' general.
     #' @param source_node Chance node from which the reaction leaves.
     #' @param target_node Node which the reaction enters.
-    #' @param p Conditional probability of traversing the reaction edge.
+    #' @param p Conditional probability of traversing the reaction edge. At most
+    #' one Reaction from each chance node may have this set to `NA_real_`, in
+    #' which case it will be replaced by one minus the sum of conditional
+    #' probabilities of the other reaction edges from the node.
     #' @param cost Cost associated with traversal of this edge (numeric or
     #' \code{ModVar}), not NA.
     #' @param benefit Benefit associated with traversal of the edge (numeric or
@@ -55,23 +58,73 @@ Reaction <- R6::R6Class(
       return(invisible(self))
     },
 
+    #' @description Creates a grid::grob for a reaction edge.
+    #' @param xs x coordinate of source of edge, grid::unit object.
+    #' @param ys y coordinate of source of edge, grid::unit object.
+    #' @param xt x coordinate of target of edge, grid::unit object.
+    #' @param yt y coordinate of target of edge, grid::unit object.
+    #' @param fs Fraction of the edge which slopes.
+    #' @return A grid::grob containing the symbol and label.
+    grob = function(xs, ys, xt, yt, fs = 0.2) {
+      # check arguments
+      abortifnot(
+        grid::is.unit(xs),
+        grid::is.unit(ys),
+        grid::is.unit(xt),
+        grid::is.unit(yt)
+      )
+      # create a gTree object for the line and its label
+      gedge <- grid::grobTree()
+      # draw the articulated line
+      gedge <- grid::addGrob(
+        gTree = gedge,
+        child = grid::moveToGrob(x = xs, y = ys)
+      )
+      xj <- (xt - xs) * fs + xs
+      yj <- yt
+      gedge <- grid::addGrob(
+        gTree = gedge,
+        child = grid::lineToGrob(x = xj, y = yj)
+      )
+      gedge <- grid::addGrob(
+        gTree = gedge,
+        child = grid::lineToGrob(x = xt, y = yt)
+      )
+      # add label above or below
+      vp <- grid::viewport(
+        x = xj, y = yj, just = c("left", "bottom")
+      )
+      ytn <- grid::convertUnit(yt, "native", valueOnly = TRUE)
+      ysn <- grid::convertUnit(ys, "native", valueOnly = TRUE)
+      if (ytn < ysn) {
+        yl <- grid::unit(0.4, "char")
+        jl <- c("left", "bottom")
+      } else {
+        yl <- grid::unit(-0.4, "char")
+        jl <- c("left", "top")
+      }
+      gedge <- grid::addGrob(
+        gTree = gedge,
+        child = grid::textGrob(
+          label = self$label(),
+          x = grid::unit(0.2, "char"), y = yl, just = jl,
+          vp = vp
+        )
+      )
+      return(gedge)
+    },
+
     #' @description Find all the model variables of type \code{ModVar} that
     #' have been specified as values associated with this Action. Includes
     #' operands of these \code{ModVar}s, if they are expressions.
     #' @return A list of \code{ModVar}s.
     modvars = function() {
-      # create lists of input variables and output Modvars
+      # build list, possibly including duplicates
       iv <- c(private$edge_cost, private$edge_benefit, private$edge_p)
-      ov <- list()
-      for (v in iv) {
-        if (inherits(v, what = "ModVar")) {
-          ov <- c(ov, v)
-          if (inherits(v, what = "ExprModVar")) {
-            for (o in v$operands()) {
-              ov <- c(ov, o)
-            }
-          }
-        }
+      ov <- iv[which(is_class(iv, what = "ModVar"))]
+      ev <- iv[which(is_class(iv, what = "ExprModVar"))]
+      for (v in ev) {
+        ov <- c(ov, unlist(v$operands()))
       }
       # return the unique list
       return(unique(ov))
@@ -80,28 +133,23 @@ Reaction <- R6::R6Class(
     #' @description Set the probability associated with the reaction edge.
     #' @param p Conditional probability of traversing the reaction edge. Of type
     #' numeric or \code{ModVar}. If numeric, \code{p} must be in the range
-    #' [0,1].
+    #' [0,1], or \code{NA_real_}. Note that setting \code{p = NA} will cause
+    #' an error.
     #' @return Updated \code{Reaction} object.
     set_probability = function(p) {
       # check argument
-      abortifnot(
-        !is_missing(p),
-        inherits(p, what = c("numeric", "ModVar")),
+      abortif(
+        missing(p),
+        !inherits(p, what = c("numeric", "ModVar")),
+        inherits(p, what = "numeric") && !is.na(p) && (p < 0.0 || p > 1.0),
         message = paste(
-          "Argument 'p' must not be missing, and of type 'numeric' or 'ModVar'."
+          "'p' must not be missing",
+          "NA_real_ or in range [0,1] if type 'numeric'",
+          "or of type 'ModVar",
+          sep = ","
         ),
         class = "invalid_probability"
       )
-      if (inherits(p, what = "numeric")) {
-        abortif(
-          !is.na(p) && p < 0.0,
-          !is.na(p) && p > 1.0,
-          message = paste(
-            "Argument 'p' must be in range [0,1], or NA_real_ if numeric."
-          ),
-          class = "invalid_probability"
-        )
-      }
       private$edge_p <- p
       return(invisible(self))
     },

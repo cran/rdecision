@@ -1,9 +1,9 @@
 #' @title A decision tree
 #' @description An R6 class to represent a decision tree model.
-#' @details A class to represent a decision tree. An object contains a tree of
-#' decision nodes, chance nodes and leaf nodes, connected by edges
-#' (either actions or reactions). It inherits from class \code{Arborescence} and
-#' satisfies the following conditions:
+#' @section Constructing the tree:
+#' A \code{DecisionTree} object contains decision nodes, chance nodes and leaf
+#' nodes, connected by edges (either actions or reactions). It inherits from
+#' class \code{Arborescence} and satisfies the following conditions:
 #' \enumerate{
 #' \item{Nodes and edges must form a tree with a single root and
 #' there must be a unique path from the root to each node.
@@ -27,6 +27,17 @@
 #' \item{Each \code{Action} must have a label, and the labels of
 #' \code{Action}s that share a common source endpoint must be unique.}
 #' }
+#' @section Time:
+#' The timing of events is not explicitly modelled in decision trees
+#' (O'Mahony, 2015). \code{rdecision} makes the assumption that all costs are
+#' incurred at time \eqn{t = 0} and that QALYs are gained during the
+#' time intervals defined for each leaf node. Discounting of future costs to
+#' present values is therefore not applicable. Future utilities may be
+#' discounted to present values by setting a discount rate for
+#' each leaf node (in usual circumstances the interval and discount rate should
+#' be the same for each leaf node). The QALYs gained are calculated by
+#' integrating the continuously discounted utility over the interval for each
+#' leaf node.
 #' @references{
 #'   Briggs A, Claxton K, Sculpher M. Decision modelling for health economic
 #'   evaluation. Oxford, UK: Oxford University Press; 2006.
@@ -40,6 +51,11 @@
 #'   Kaminski B, Jakubczyk M, Szufel P. A framework for sensitivity analysis of
 #'   decision trees. \emph{Central European Journal of Operational Research}
 #'   2018;\bold{26}:135–59, \doi{10.1007/s10100-017-0479-6}.
+#'
+#'   O'Mahony JF, Newall AT, van Rosmalen J. Dealing with time in health
+#'   economic evaluation: methodological issues and recommendations for
+#'   practice. \emph{PharmacoEconomics} 2015;\bold{33}:1255-1268,
+#'   \doi{10.1007/s40273-015-0309-4}.
 #' }
 #' @docType class
 #' @author Andrew J. Sims \email{andrew.sims@@newcastle.ac.uk}
@@ -72,21 +88,15 @@ DecisionTree <- R6::R6Class(
         class = "incorrect_node_type"
       )
       # all and only leaf nodes must have no children
-      vi <- self$vertex_along()
-      P <- vi[vapply(vi, FUN.VALUE = TRUE, FUN = function(i) {
-        v <- self$vertex_at(i)
-        self$is_parent(v)
-      })]
+      v <- self$vertexes()
+      P <- self$vertex_index(v[which(self$is_parent(v))])
       abortifnot(setequal(P, union(D, C)),
         message = "All and only leaf nodes must have no children",
         class = "leaf_non-child_sets_unequal"
       )
       # each edge must inherit from action or reaction
-      lv <- vapply(self$edge_along(), FUN.VALUE = TRUE, FUN = function(i) {
-        e <- self$edge_at(i)
-        inherits(e, what = c("Action", "Reaction"))
-      })
-      abortifnot(all(lv),
+      abortifnot(
+        all(is_class(x = self$edges(), what = c("Action", "Reaction"))),
         message = "Each edge must inherit from Action or Reaction",
         class = "incorrect_edge_type"
       )
@@ -239,23 +249,17 @@ DecisionTree <- R6::R6Class(
       mv <- list()
       # find the ModVars in Actions and Reactions
       for (e in self$edges()) {
-        if (inherits(e, what = c("Action", "Reaction"))) {
-          mv <- c(mv, e$modvars())
-        }
+        mv <- c(mv, e$modvars())
       }
       # find the modvars in leaf nodes
-      for (v in private$V){
-        if (inherits(v, what = "LeafNode")) {
-          mv <- c(mv, v$modvars())
-        }
+      for (v in self$vertexes()){
+        mv <- c(mv, v$modvars())
       }
       # return a unique list
       return(unique(mv))
     },
 
     #' @description Tabulate the model variables.
-    #' @param expressions A logical that defines whether expression model
-    #' variables should be included in the tabulation.
     #' @return Data frame with one row per model variable, as follows:
     #' \describe{
     #' \item{\code{Description}}{As given at initialization.}
@@ -276,15 +280,10 @@ DecisionTree <- R6::R6Class(
     #' \item{\code{Est}}{TRUE if the quantiles and SD have been estimated by
     #' random sampling.}
     #' }
-    modvar_table = function(expressions = TRUE) {
+    modvar_table = function() {
       # create list of model variables in this decision tree, excluding
       # expressions if not wanted
       mvlist <- self$modvars()
-      if (!expressions) {
-        mvlist <- mvlist[vapply(mvlist, FUN.VALUE = TRUE, FUN = function(v) {
-          !v$is_expression()
-        })]
-      }
       # create a data frame of model variables
       DF <- data.frame(
         Description = vapply(mvlist, FUN.VALUE = "x", FUN = function(x) {
@@ -354,14 +353,6 @@ DecisionTree <- R6::R6Class(
       if (border) {
         grid::grid.rect(gp = grid::gpar(col = "lightgrey"))
       }
-      # create a viewport for the outer margins
-      grid::pushViewport(
-        grid::viewport(
-          width = grid::unit(1.0, "npc") - 2.0 * grid::stringWidth("M"),
-          height = grid::unit(1.0, "npc") - 2.0 * grid::stringWidth("M"),
-          clip = "on"
-        )
-      )
       # find the (x,y) coordinates of nodes using Walker's algorithm and the
       # unadjusted aspect ratio of the tree
       XY <- self$postree(RootOrientation = "EAST", LevelSeparation = 1.0)
@@ -369,31 +360,48 @@ DecisionTree <- R6::R6Class(
       xmax <- max(XY[, "x"])
       ymin <- min(XY[, "y"])
       ymax <- max(XY[, "y"])
-      tree_asp <- (xmax - xmin) / (ymax - ymin)
-      # find the label length of the leftmost node
-      inode <- XY[[which.min(XY[, "x"]), "n"]]
-      vnode <- self$vertex_at(inode)
-      llabel <- grid::stringWidth(vnode$label())
-      # calculate margins for the viewport which will contain the node centres,
-      # leaving space for the node shapes and the leftmost label
-      lmargin <- max(llabel, grid::unit(1.5, "char"))
-      rmargin <- grid::unit(1.5, "char")
-      bmargin <- grid::unit(2.0, "char")
-      tmargin <- grid::unit(2.5, "char")
+      # create a viewport natively scaled to the coordinates from postree
+      grid::pushViewport(
+        grid::viewport(
+          x = grid::unit(0.0, "npc"), y = grid::unit(0.0, "npc"),
+          width = grid::unit(1.0, "npc"), height = grid::unit(1.0, "npc"),
+          just = c("left", "bottom"),
+          xscale = c(xmin, xmax), yscale = c(ymin, ymax),
+          clip = "off"
+        )
+      )
+      # find the minimum margins required to accommodate the node symbols and
+      # labels that extend outside the rectangle containing the node centres
+      gxmin <- grid::unit(min(XY[, "x"]), "native")
+      gxmax <- grid::unit(max(XY[, "x"]), "native")
+      gymin <- grid::unit(min(XY[, "y"]), "native")
+      gymax <- grid::unit(max(XY[, "y"]), "native")
+      for (v in self$vertexes()) {
+        # find the node from its index
+        i <- which(XY[, "n"] == self$vertex_index(v))
+        # get the node centre location
+        xc <- grid::unit(XY[[i, "x"]], "native")
+        yc <- grid::unit(XY[[i, "y"]], "native")
+        # get the bounding box for the symbol and label
+        bb <- v$grob(xc, yc, bb = TRUE)
+        # calculate limits of the symbol and its label in native coordinates
+        # update the limits of the drawing area
+        gxmin <- min(gxmin, bb[[1L]])
+        gxmax <- max(gxmax, bb[[2L]])
+        gymin <- min(gymin, bb[[3L]])
+        gymax <- max(gymax, bb[[4L]])
+      }
+      # calculate margins
+      lmargin <- grid::unit(min(XY[, "x"]), "native") - gxmin
+      rmargin <- gxmax - grid::unit(max(XY[, "x"]), "native")
+      bmargin <- grid::unit(min(XY[, "y"]), "native") - gymin
+      tmargin <- gymax - grid::unit(max(XY[, "y"]), "native")
+      # pop the viewport, recalculate margins
+      grid::popViewport()
       # compute the level separation for the tree which will optimise the use
       # of space in the inner viewport
       vpgw <- grid::unit(1.0, "npc") - lmargin - rmargin
       vpgh <- grid::unit(1.0, "npc") - bmargin - tmargin
-      vpg_asp <- grid::convertUnit(vpgw, unitTo = "cm", valueOnly = TRUE) /
-        grid::convertUnit(vpgh, unitTo = "cm", valueOnly = TRUE)
-      # lay out the tree again, with the revised aspect ratio
-      XY <- self$postree(
-        RootOrientation = "EAST", LevelSeparation = vpg_asp / tree_asp
-      )
-      xmin <- min(XY[, "x"])
-      xmax <- max(XY[, "x"])
-      ymin <- min(XY[, "y"])
-      ymax <- max(XY[, "y"])
       # create a viewport for the inner margins (containing the node centres),
       # with the postree coordinate system
       grid::pushViewport(
@@ -401,123 +409,34 @@ DecisionTree <- R6::R6Class(
           x = lmargin, y = bmargin, width = vpgw, height = vpgh,
           just = c("left", "bottom"),
           xscale = c(xmin, xmax), yscale = c(ymin, ymax),
-          clip = "inherit"
+          clip = "off"
         )
       )
-      # function to draw an action or reaction
-      draw_edge <- function(xs, ys, xt, yt, fs = 0.2, label = "") {
-        # draw the articulated line
-        grid::grid.move.to(x = xs, y = ys, default.units = "native")
-        xj <- (xt - xs) * fs + xs
-        yj <- yt
-        grid::grid.line.to(x = xj, yj, default.units = "native")
-        grid::grid.line.to(x = xt, y = yt, default.units = "native")
-        # add label above or below
-        grid::pushViewport(viewport(
-          x = xj, y = yj, default.units = "native", just = c("left", "bottom")
-        ))
-        if (yt < ys) {
-          grid::grid.text(
-            label = label,
-            x = grid::unit(0.2, "char"), y = grid::unit(0.4, "char"),
-            default.units = "char", just = c("left", "bottom")
-          )
-        } else {
-          grid::grid.text(
-            label = label,
-            x = grid::unit(0.2, "char"), y = -grid::unit(0.4, "char"),
-            default.units = "char", just = c("left", "top")
-          )
-        }
-        grid::popViewport()
-      }
-      # function to draw a decision node and label
-      decision_node <- function(x, y, label) {
-        a <- grid::unit(sqrt(pi / 4.0), "char")
-        dy <- grid::unit(0.4, "char")
-        # create a viewport with origin at the centre of the object
-        grid::pushViewport(viewport(
-          x = x, y = y, default.units = "native", just = c("left", "bottom")
-        ))
-        grid::grid.rect(
-          x = 0.0, y = 0.0, width = a * 2.0, height = a * 2.0,
-          default.units = "char",
-          just = c("centre", "centre"),
-          gp = grid::gpar(col = "black", fill = "lightgray")
-        )
-        grid::grid.text(
-          label = label, x = 0.0, y = a  + dy, default.units = "char",
-          just = c("right", "bottom")
-        )
-        grid::popViewport()
-      }
-      # function to draw a chance node and label
-      chance_node <- function(x, y, label) {
-        a <- grid::unit(1.0, "char")
-        dy <- grid::unit(0.4, "char")
-        # create a viewport with origin at the centre of the object
-        grid::pushViewport(viewport(
-          x = x, y = y, default.units = "native", just = c("left", "bottom")
-        ))
-        grid::grid.circle(
-          x = 0.0, y = 0.0, r = a, default.units = "char",
-          gp = grid::gpar(col = "black", fill = "lightgray")
-        )
-        grid::grid.text(
-          label = label, x = 0.0, y = a  + dy, default.units = "char",
-          just = c("right", "bottom")
-        )
-        grid::popViewport()
-      }
-      # function to draw leaf node and label (in char space to keep aspect)
-      leaf_node <- function(x, y, label) {
-        a <- grid::unit(1.5 * sqrt(pi / sqrt(3.0)), "char")
-        dy <- grid::unit(0.4, "char")
-        # create a viewport with origin at the centre of the object
-        grid::pushViewport(viewport(
-          x = x, y = y, default.units = "native", just = c("left", "bottom")
-        ))
-        grid::grid.polygon(
-          x = c(-a / sqrt(3.0), sqrt(3.0) * a / 6.0, sqrt(3.0) * a / 6.0),
-          y = c(0.0, -a / 2.0, a / 2.0),
-          default.units = "char",
-          gp = grid::gpar(fill = "lightgray", col = "black")
-        )
-        grid::grid.text(
-          label = label, x = 0.0, y = a / 3.0 + dy, default.units = "char",
-          just = c("right", "bottom")
-        )
-        grid::popViewport()
-      }
       # draw the edges as articulated lines between node centres
       for (ie in self$edge_along()) {
         e <- self$edge_at(ie)
         # find source and target nodes
         ns <- self$vertex_index(e$source())
         nt <- self$vertex_index(e$target())
-        xs <- XY[[which(XY[, "n"] == ns), "x"]]
-        ys <- XY[[which(XY[, "n"] == ns), "y"]]
-        xt <- XY[[which(XY[, "n"] == nt), "x"]]
-        yt <- XY[[which(XY[, "n"] == nt), "y"]]
-        draw_edge(
-          xs = xs, ys = ys, xt = xt, yt = yt, fs = fs, label = e$label()
-        )
+        xs <- grid::unit(XY[[which(XY[, "n"] == ns), "x"]], "native")
+        ys <- grid::unit(XY[[which(XY[, "n"] == ns), "y"]], "native")
+        xt <- grid::unit(XY[[which(XY[, "n"] == nt), "x"]], "native")
+        yt <- grid::unit(XY[[which(XY[, "n"] == nt), "y"]], "native")
+        gedge <- e$grob(xs = xs, ys = ys, xt = xt, yt = yt, fs = fs)
+        grid::grid.draw(gedge)
       }
       # draw the nodes
       for (iv in self$vertex_along()) {
         v <- self$vertex_at(iv)
         # find the node from its index
         i <- which(XY[, "n"] == self$vertex_index(v))
-        # switch type
-        if (inherits(v, what = "DecisionNode")) {
-          decision_node(XY[[i, "x"]], XY[[i, "y"]], v$label())
-        } else if (inherits(v, what = "ChanceNode")) {
-          chance_node(XY[[i, "x"]], XY[[i, "y"]], v$label())
-        } else if (inherits(v, what = "LeafNode")) {
-          leaf_node(XY[[i, "x"]], XY[[i, "y"]], v$label())
-        }
+        # draw the node
+        xc <- grid::unit(XY[[i, "x"]], "native")
+        yc <- grid::unit(XY[[i, "y"]], "native")
+        gn <- v$grob(xc, yc)
+        grid::grid.draw(gn)
       }
-      # return updated DecisionTree (unchanged)
+      # return updated DecisionTree
       return(invisible(self))
     },
 
@@ -525,10 +444,15 @@ DecisionTree <- R6::R6Class(
     #' @details A strategy is a unanimous prescription of an action taken at
     #' each decision node, coded as a list of action edges. This checks
     #' whether the strategy is valid for this decision tree.
-    #' @param strategy A list of Action edges.
+    #' @param strategy A list of Action edges, or a single Action edge for
+    #' decision trees with one decision node.
     #' @return TRUE if the strategy is valid for this tree. Returns
     #' FALSE if the list of Action edges are not a valid strategy.
     is_strategy = function(strategy) {
+      # coerce to vector
+      if (!is.vector(strategy)) {
+        strategy <- c(strategy)
+      }
       # find the set of source nodes for the action edges in the strategy
       iS <- vapply(X = strategy, FUN.VALUE = 1L, FUN = self$arrow_source)
       # find the list of Decision nodes
@@ -545,8 +469,9 @@ DecisionTree <- R6::R6Class(
     #' be unique.
     #' @param what A character string defining what to return. Must be one
     #' of "label" or "index".
-    #' @param select A single strategy (given as a list of action edges, with
-    #' one action edge per decision node). If provided, only that strategy
+    #' @param select A single strategy, given as a list of action edges, with
+    #' one action edge per decision node, or as a single action edge if there
+    #' is one decision node in the tree. If provided, only that strategy
     #' is selected from the returned table. Intended for tabulating a
     #' single strategy into a readable form.
     #' @return A data frame where each row is a potential strategy
@@ -578,6 +503,10 @@ DecisionTree <- R6::R6Class(
       tti <- expand.grid(aei, KEEP.OUT.ATTRS = FALSE)
       # select a single strategy, if required
       if (!is.null(select)) {
+        # coerce select into a list
+        if (!is.vector(select)) {
+          select <- c(select)
+        }
         # indexes of action edges in 'select' argument
         ss <- vapply(X = select, FUN.VALUE = 1L, FUN = self$edge_index)
         # test whether each table row has the same action edges as 'select'
@@ -712,7 +641,8 @@ DecisionTree <- R6::R6Class(
     #' @details For each walk, probability, cost, benefit and utility are
     #' calculated. There is minimal checking of the argument because this
     #' function is intended to be called repeatedly during tree evaluation,
-    #' including PSA.
+    #' including PSA. Discounts are applied to calculate the present value of
+    #' future costs and health effects.
     #' @param W A list of root-to-leaf walks. A walk is a sequence of edges
     #' (actions and reactions), stored as a list. Each walk must start with an
     #' edge whose source is the root node and end with an edge whose target is
@@ -725,7 +655,7 @@ DecisionTree <- R6::R6Class(
     #' @return A pay-off table, represented as a matrix of numeric values
     #' with response columns as follows:
     #' \describe{
-    #' \item{\code{Probability}}{The probability of traversing the pathway. }
+    #' \item{\code{Probability}}{The probability of traversing the pathway.}
     #' \item{\code{Path.Cost}}{The cost of traversing the pathway.}
     #' \item{\code{Path.Benefit}}{The benefit derived from traversing the
     #'       pathway.}
@@ -820,10 +750,10 @@ DecisionTree <- R6::R6Class(
     #'       leaving the node}
     #'     \item{\code{Leaf}}{The label of terminating leaf node}
     #'     \item{\code{Probability}}{Probability of traversing the path}
-    #'     \item{\code{Cost}}{Cost of traversing the path}
-    #'     \item{\code{Benefit}}{Benefit of traversing the path}
-    #'     \item{\code{Utility}}{Utility of traversing the path}
-    #'     \item{\code{QALY}}{QALY of traversing the path}
+    #'     \item{\code{Cost}}{Cost of traversing the path x probability}
+    #'     \item{\code{Benefit}}{Benefit of traversing the path x probability}
+    #'     \item{\code{Utility}}{Utility of traversing the path x probability}
+    #'     \item{\code{QALY}}{QALYs gained by those traversing the path}
     #'   }
     #' }
     #'
@@ -1158,111 +1088,17 @@ DecisionTree <- R6::R6Class(
       O <- t(O)
       # append to the data frame
       TO <- cbind(TO, O)
-
       # re-order it with least variation first
       TO[, "range"] <- abs(TO[, "outcome.max"] - TO[, "outcome.min"])
       TO <- TO[order(TO[, "range"], decreasing = FALSE), ]
       TO[, "range"] <- NULL
-
       # plot the graph, if required
       if (draw) {
         # x axis label
-        xlab <- ifelse(outcome == "saving", "Mean cost saving", "Mean ICER")
-        # make labels (description + units)
-        TO[, "Label"] <- paste(TO[, "Description"], TO[, "Units"], sep = ", ")
-        # width and height of the plot in inches
-        dsize <- dev.size(unit = "in")
-        figw <- dsize[[1L]]
-        figh <- dsize[[2L]]
-        # width of the left outer margin as a proportion of figw
-        louter <- 0.4
-        # size of the inner margins as lines of text (0.2 inches per line)
-        binner <- 4.1
-        linner <- 2.1
-        tinner <- 1.1
-        rinner <- linner
-        # create the plot frame
-        withr::with_par(
-          new = list(
-            omi = c(0.0, figw * louter, 0.0, 0.0),
-            mar = c(binner, linner, tinner, rinner),  # lines of text
-            cex = 0.75
-          ),
-          code = {
-            # set up the plot axes
-            plot(
-              x = NULL,
-              y = NULL,
-              xlim = c(
-                min(min(TO$outcome.min), min(TO$outcome.max)),
-                max(max(TO$outcome.min), max(TO$outcome.max))
-              ),
-              ylim = c(0.5, nrow(TO) + 0.5),
-              xlab = xlab,
-              ylab = "",
-              yaxt = "n",
-              frame.plot = FALSE
-            )
-            # find the longest label and scale text size accordingly
-            lw <- max(strwidth(s = TO[, "Label"], unit = "in"))
-            lw <- lw + strwidth("MM", unit = "in")
-            cex_axis <- min((louter * figw) / lw, 1.0)
-            # label the y axis
-            axis(
-              side = 2L,
-              at = seq_len(nrow(TO)),
-              labels = TO$Label,
-              lty = 0L,
-              tick = FALSE,
-              las = 2L,
-              hadj = 1.0,
-              cex.axis = cex_axis,
-              outer = TRUE
-            )
-            # function to return a limit value (vectorized)
-            limtxt <- function(x) {
-              txt <- signif(x, 3L)
-            }
-            # find longest limit labels and adjust label text size
-            lmin <- max(strwidth(s = limtxt(TO[, "outcome.min"]), unit = "in"))
-            lmax <- max(strwidth(s = limtxt(TO[, "outcome.max"]), unit = "in"))
-            lw <- max(lmin, lmax)
-            cex_limit <- min(linner * 0.2 / lw, 1.0)
-            # add bars and limits
-            for (i in seq_len(nrow(TO))) {
-              xleft <- min(TO[i, "outcome.min"], TO[i, "outcome.max"])
-              xright <- max(TO[i, "outcome.min"], TO[i, "outcome.max"])
-              rect(
-                xleft,
-                xright,
-                ybottom = i - 0.25,
-                ytop = i + 0.25,
-                border = "black",
-                col = "lightgray",
-                xpd = TRUE
-              )
-              LL <- TO[i, "LL"]
-              UL <- TO[i, "UL"]
-              if (TO[i, "outcome.max"] > TO[i, "outcome.min"]) {
-                labels <- limtxt(c(LL, UL))
-              } else {
-                labels <- limtxt(c(UL, LL))
-              }
-              text(
-                x = c(xleft, xright),
-                y = c(i, i),
-                labels = labels,
-                pos = c(2.0, 4.0),
-                offset = 0.25,
-                cex = cex_limit,
-                xpd = TRUE
-              )
-            }
-            # add mean (base case)
-            abline(v = TO[[1L, "outcome.mean"]], lty = "dashed")
-            # remove label column
-            TO[, "Label"] <- NULL
-          }
+        xlab <- if (outcome == "saving") "Mean cost saving" else "Mean ICER"
+        # plot it
+        tornado_plot(
+          to = TO, outcome_mean = TO[[1L, "outcome.mean"]], xlab = xlab
         )
       }
       # re-order it with greatest variation first

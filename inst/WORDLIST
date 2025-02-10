@@ -17,12 +17,14 @@ cloneable
 codecov
 Codecov
 com
+cQALY
 CRBSI
 cs
 Decis
 Dervieux
 devtools
 Devtools
+DiagrammeR
 difftime
 Dirichlet
 disutility
@@ -44,6 +46,7 @@ Fleurence
 Gansner
 García
 github
+GML
 Goulet
 Graphviz
 Grenon
@@ -53,10 +56,12 @@ Homan
 Iannone
 ICER
 ICERs
+igraph
 interventional
 ISPOR
 Jahn
 Jakubczyk
+JF
 JJ
 JL
 JQ
@@ -64,6 +69,7 @@ jval
 Kaminski
 Kamiński
 Karnon
+Knitr
 Kolmogorov
 Kolmogorov's
 Koutsofios
@@ -90,9 +96,11 @@ org
 Paltiel
 Pauker
 PharmacoEconomics
+PHV
 Poisson
 polytree
 ProbOnto
+programme
 PSA
 QALY
 QALYs
@@ -104,6 +112,7 @@ Rlang
 RL
 rmarkdown
 Rmarkdown
+Rosmalen
 RR
 rstudio
 Sculpher

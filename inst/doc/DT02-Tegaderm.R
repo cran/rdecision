@@ -1,5 +1,5 @@
 ## -----------------------------------------------------------------------------
-library("rdecision") # nolint
+library(rdecision)
 
 ## -----------------------------------------------------------------------------
 # baseline risk
@@ -204,12 +204,71 @@ E <- list(
 DT <- DecisionTree$new(V, E)
 
 ## -----------------------------------------------------------------------------
+DT$draw(border = TRUE)
+
+## -----------------------------------------------------------------------------
+with(data = DT$modvar_table(), expr = {
+  data.frame(
+    Description = Description,
+    Distribution = Distribution,
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
+with(data = DT$modvar_table(), expr = {
+  data.frame(
+    Variable = paste(Description, Units, sep = ", "),
+    Mean = round(E, digits = 3L),
+    LowerCI = round(Q2.5, digits = 3L),
+    UpperCI = round(Q97.5, digits = 3L),
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
 RES <- DT$evaluate()
+
+## -----------------------------------------------------------------------------
+with(data = RES, expr = {
+  data.frame(
+    Run = Run,
+    d1 = d1,
+    Cost = gbp(Cost, p = TRUE, char = FALSE),
+    stringsAsFactors = FALSE
+  )
+})
+
+## -----------------------------------------------------------------------------
+to <- DT$tornado(index = e10, ref = e9, draw = TRUE)
+
+## -----------------------------------------------------------------------------
+with(data = to, expr = {
+  data.frame(
+    Variable = paste(Description, Units, sep = ", "),
+    LL = round(x = LL, digits = 2L),
+    UL = round(x = UL, digits = 2L),
+    Min.CostDiff = round(x = outcome.min, digits = 2L),
+    Max.CostDiff = round(x = outcome.max, digits = 2L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 N <- 1000L
 psa <- DT$evaluate(setvars = "random", by = "run", N = N)
-psa$Difference <- psa$Cost.Standard - psa$Cost.Tegaderm
+psa[, "Difference"] <- psa[, "Cost.Standard"] - psa[, "Cost.Tegaderm"]
+
+## -----------------------------------------------------------------------------
+with(data = head(psa, n = 10L), expr = {
+  data.frame(
+    Run = Run,
+    Cost.Tegaderm = gbp(Cost.Tegaderm, p = TRUE, char = FALSE),
+    Cost.Standard = gbp(Cost.Standard, p = TRUE, char = FALSE),
+    Cost.Difference = gbp(Difference, p = TRUE, char = FALSE),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 rm(psa)
@@ -242,7 +301,7 @@ DT <- DecisionTree$new(V, E)
 ## -----------------------------------------------------------------------------
 N <- 1000L
 psa <- DT$evaluate(setvars = "random", by = "run", N = N)
-psa$Difference <- psa$Cost.Standard - psa$Cost.Tegaderm
+psa[, "Difference"] <- psa[, "Cost.Standard"] - psa[, "Cost.Tegaderm"]
 
 ## -----------------------------------------------------------------------------
 hr_threshold <- DT$threshold(

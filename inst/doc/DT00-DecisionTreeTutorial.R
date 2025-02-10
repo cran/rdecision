@@ -1,29 +1,4 @@
 ## -----------------------------------------------------------------------------
-#' @title Write a monetary value
-#' @param x Monetary value, or vector of values
-#' @param p Logical; if TRUE show value to nearest penny, cent etc. If FALSE
-#' show it to the nearest pound, dollar, euro etc.
-#' @noRd
-gbp <- function(x, p = FALSE) {
-  digits <- if (p) 2L else 0L
-  s <- format(
-    x = vapply(X = x, FUN.VALUE = 1.0, FUN = round, digits = digits),
-    digits = NULL,
-    nsmall = digits,
-    scientific = FALSE,
-    big.mark = ","
-  )
-  return(s)
-}
-
-## -----------------------------------------------------------------------------
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  echo = FALSE,
-  comment = "#>"
-)
-
-## -----------------------------------------------------------------------------
 library("rdecision")
 
 ## -----------------------------------------------------------------------------
@@ -66,8 +41,7 @@ nnt <- 1.0 / (ip_diet - ip_exercise)
 ## -----------------------------------------------------------------------------
 p_diet <- 1.0 - ip_diet
 p_exercise <- 1.0 - ip_exercise
-q_diet <- 1.0 - p_diet
-q_exercise <- 1.0 - p_exercise
+
 
 ## -----------------------------------------------------------------------------
 reaction_diet_success <- Reaction$new(
@@ -77,7 +51,7 @@ reaction_diet_success <- Reaction$new(
 
 reaction_diet_failure <- Reaction$new(
   chance_node_diet, leaf_node_diet_stent,
-  p = q_diet, cost = cost_stent, label = "Failure"
+  p = NA_real_, cost = cost_stent, label = "Failure"
 )
 
 reaction_exercise_success <- Reaction$new(
@@ -87,7 +61,7 @@ reaction_exercise_success <- Reaction$new(
 
 reaction_exercise_failure <- Reaction$new(
   chance_node_exercise, leaf_node_exercise_stent,
-  p = q_exercise, cost = cost_stent, label = "Failure"
+  p = NA_real_, cost = cost_stent, label = "Failure"
 )
 
 ## -----------------------------------------------------------------------------
@@ -118,13 +92,20 @@ dt$draw()
 rs <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
-knitr::kable(rs, digits = 2L)
+with(data = rs, expr = {
+  data.frame(
+    Programme = Programme,
+    Probability = round(Probability, digits = 2L),
+    Cost = round(Cost, digits = 2L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 o_netc_diet <- rs[[which(rs[, "Programme"] == "Diet"), "Cost"]]
-e_netc_diet <- cost_diet + q_diet * cost_stent
+e_netc_diet <- cost_diet + (1.0 - p_diet) * cost_stent
 o_netc_exercise <- rs[[which(rs[, "Programme"] == "Exercise"), "Cost"]]
-e_netc_exercise <- cost_exercise + q_exercise * cost_stent
+e_netc_exercise <- cost_exercise + (1.0 - p_exercise) * cost_stent
 incc <- nnt * (cost_exercise - cost_diet)
 o_deltac <- o_netc_exercise - o_netc_diet
 e_deltac <- (incc - cost_stent) / nnt
@@ -136,7 +117,15 @@ e_success_threshold <- 1.0 - (ip_diet - (1.0 / nnt_threshold))
 rp <- dt$evaluate(by = "path")
 
 ## -----------------------------------------------------------------------------
-knitr::kable(rp, digits = c(1L, NA, NA, 3L, 2L, 2L, 3L, 3L))
+with(data = rp, expr = {
+  data.frame(
+    Programme = Programme,
+    Leaf = Leaf,
+    Probability = round(Probability, digits = 2L),
+    Cost = round(Cost, digits = 2L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 du_stent <- 0.05
@@ -145,7 +134,15 @@ leaf_node_exercise_stent$set_utility(1.0 - du_stent)
 rs <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
-knitr::kable(rs, digits = c(1L, NA, 1L, 2L, 2L, 3L, 3L))
+with(data = rs, expr = {
+  data.frame(
+    Programme = Programme,
+    Probability = round(Probability, digits = 2L),
+    Cost = round(Cost, digits = 2L),
+    QALY = round(QALY, digits = 4L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 delta_c <- rs[[which(rs[, "Programme"] == "Exercise"), "Cost"]] -
@@ -171,36 +168,44 @@ p_exercise <- BetaModVar$new(
   alpha = s_exercise, beta = f_exercise, description = "P(exercise)", units = ""
 )
 
-q_diet <- ExprModVar$new(
-  rlang::quo(1.0 - p_diet), description = "1 - P(diet)", units = ""
-)
-q_exercise <- ExprModVar$new(
-  rlang::quo(1.0 - p_exercise), description = "1 - P(exercise)", units = ""
-)
-
 ## -----------------------------------------------------------------------------
 action_diet$set_cost(cost_diet)
 action_exercise$set_cost(cost_exercise)
 
 ## -----------------------------------------------------------------------------
 reaction_diet_success$set_probability(p_diet)
-
-reaction_diet_failure$set_probability(q_diet)
 reaction_diet_failure$set_cost(cost_stent)
 
 reaction_exercise_success$set_probability(p_exercise)
-
-reaction_exercise_failure$set_probability(q_exercise)
 reaction_exercise_failure$set_cost(cost_stent)
 
 ## -----------------------------------------------------------------------------
-knitr::kable(dt$modvar_table(), digits = 3L)
+with(data = dt$modvar_table(), expr = {
+  data.frame(
+    Description = Description,
+    Units = Units,
+    Distribution = Distribution,
+    Mean = Mean,
+    SD = SD,
+    Q2.5 = Q2.5,
+    Q97.5 = Q97.5,
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 rs <- dt$evaluate()
 
 ## -----------------------------------------------------------------------------
-knitr::kable(rs, digits = 2L)
+with(data = rs, expr = {
+  data.frame(
+    Programme = Programme,
+    Probability = round(Probability, digits = 2L),
+    Cost = round(Cost, digits = 2L),
+    QALY = round(QALY, digits = 4L),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 rs_025 <- dt$evaluate(setvars = "q2.5")
@@ -211,11 +216,34 @@ N <- 1000L
 rs <- dt$evaluate(setvars = "random", by = "run", N = N)
 
 ## -----------------------------------------------------------------------------
-knitr::kable(summary(rs[, c(3L, 8L)]))
+local({
+  data.frame(
+    Cost.Diet = round(unclass(summary(rs[, "Cost.Diet"])), digits = 2L),
+    Cost.Exercise = round(unclass(summary(rs[, "Cost.Exercise"])), digits = 2L),
+    row.names = names(summary(rs[, "Cost.Diet"])),
+    stringsAsFactors = FALSE
+  )
+})
 
 ## -----------------------------------------------------------------------------
 rs[, "Difference"] <- rs[, "Cost.Diet"] - rs[, "Cost.Exercise"]
 CI <- quantile(rs[, "Difference"], c(0.025, 0.975))
+
+## -----------------------------------------------------------------------------
+hist(
+  rs[, "Difference"], 100L,  main = "Distribution of saving",
+  xlab = "Saving (GBP)"
+)
+
+## -----------------------------------------------------------------------------
+with(data = rs[1L : 10L, ], expr = {
+  data.frame(
+    Run = Run,
+    Cost.Diet = round(Cost.Diet, digits = 2L),
+    Cost.Exercise = round(Cost.Exercise, digits = 2L),
+    Difference = round(Difference, digits = 2L)
+  )
+})
 
 ## -----------------------------------------------------------------------------
 cost_threshold <- dt$threshold(

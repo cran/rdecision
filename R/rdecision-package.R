@@ -12,11 +12,42 @@
 #' @keywords internal
 "_PACKAGE"
 #'
-#' @import grid
-#' @import R6
-#' @import rlang
-#' @import stats
-#' @import utils
-#' @importFrom withr with_par
+#' @importFrom graphics
+#'   abline
+#'   axis
+#'   rect
+#'   strwidth
+#'   text
+#' @importFrom grDevices
+#'   dev.size
+#' @importFrom grid
+#'   addGrob
+#'   convertUnit
+#'   grobTree
+#'   is.unit
+#'   lineToGrob
+#'   moveToGrob
+#'   textGrob
+#'   viewport
+#' @importFrom R6
+#'   R6Class
+#' @importFrom rlang
+#'   eval_bare
+#'   eval_tidy
+#'   is_quosure
+#'   new_quosure
+#'   quo
+#'   quos
+#'   quo_get_env
+#'   quo_get_expr
+#' @importFrom stats
+#'   complete.cases
+#'   quantile
+#'   qbeta
+#'   rgamma
+#'   runif
+#'   sd
+#' @importFrom withr
+#'   with_par
 #'
 NULL

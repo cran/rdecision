@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Andrew Sims" />
+
+
+<title>Introduction to the construction of Markov models</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">
+/* for pandoc --citeproc since 2.11 */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Introduction to the construction of Markov
+models</h1>
+<h4 class="author">Andrew Sims</h4>
+<h4 class="date">September 2024</h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>Sonnenberg and Beck’s 1993 practical guide to using Markov models in
+decision making<span class="citation"><sup>1</sup></span> is widely
+cited, and describes the principles of using Markov models for cohort
+simulations. As an example, it introduces an idealised three health
+state model applied to patients who have received a prosthetic heart
+valve (PHV). This vignette explains how to use <code>rdecision</code> to
+implement the example case, and replicates the published results.</p>
+</div>
+<div id="model-structure" class="section level1">
+<h1>Model structure</h1>
+<p>In the example, there are three states: “Well”, “Disabled” and
+“Dead”, which are represented by variables of type
+<code>MarkovState</code>. As a minimum, only the name property of each
+state must be set; the utility and annual occupancy cost can be set when
+a state is created or set later. Because we will be setting these
+properties later, we create the states as named variables. A Markov
+state object is represented in <code>rdecision</code> as a node in a
+graph.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>s_well <span class="ot">&lt;-</span> MarkovState<span class="sc">$</span><span class="fu">new</span>(<span class="at">name =</span> <span class="st">&quot;Well&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>s_disabled <span class="ot">&lt;-</span> MarkovState<span class="sc">$</span><span class="fu">new</span>(<span class="at">name =</span> <span class="st">&quot;Disabled&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>s_dead <span class="ot">&lt;-</span> MarkovState<span class="sc">$</span><span class="fu">new</span>(<span class="at">name =</span> <span class="st">&quot;Dead&quot;</span>)</span></code></pre></div>
+<p>Each allowed transition between states is represented as an object of
+type <code>Transition</code>. In <code>rdecision</code>, transitions are
+the directed edges of a graph. Transitions are defined by the source and
+target states that they join, and can have the optional properties of a
+cost associated with making the transition, and a label. In this
+example, we do not need to set any of the optional properties, and can
+create the transitions as a list of unnamed variables. Unless states are
+temporary states (occupied for one cycle only), we must also define
+transitions from each state to itself, to represent people who remain in
+a state between cycles.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_well, s_well),</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_dead, s_dead),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_disabled, s_disabled),</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_well, s_disabled),</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_well, s_dead),</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  Transition<span class="sc">$</span><span class="fu">new</span>(s_disabled, s_dead)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>The model itself is created as a variable of type
+<code>SemiMarkovModel</code>, which represents a directed graph with
+nodes (states) and edges (transitions). Properties of the model,
+including the cycle time and discount rates can be set when the model is
+created. For this example, we leave these as their default values (one
+year cycle length, no discounting applied to costs or utilities).</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> SemiMarkovModel<span class="sc">$</span><span class="fu">new</span>(<span class="at">V =</span> <span class="fu">list</span>(s_well, s_disabled, s_dead), E)</span></code></pre></div>
+<p>The model can be saved as a graph object and rendered as a diagram.
+Method <code>as_gml()</code> creates a representation of the graph in
+GML format, which can be opened and plotted using the
+<code>igraph</code> package, optionally with additional manipulation of
+the graph’s appearance to achieve the desired effect, as below.</p>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="model-variables" class="section level1">
+<h1>Model variables</h1>
+<p>In the prosthetic heart valve example, there are only 4 model
+variables: three probabilities of transition during one cycle, and one
+utility (disabled state).</p>
+<p>The default utility of each state is 1, so we have to set the
+utilities of the disabled and dead states, assuming those in the well
+state have full utility, as follows:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>s_disabled<span class="sc">$</span><span class="fu">set_utility</span>(<span class="fl">0.7</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>s_dead<span class="sc">$</span><span class="fu">set_utility</span>(<span class="fl">0.0</span>)</span></code></pre></div>
+<p>The probabilities of making a transition between states in a
+semi-Markov model must be defined as a matrix. Specifically, these are
+the probabilities of starting a cycle in one state and finishing it in
+another. <code>rdecision</code> requires the matrix to have specific
+properties:</p>
+<ul>
+<li>Its cells must be numerical values between 0 and 1.</li>
+<li>There should be as many rows and columns as states.</li>
+<li>The rows and columns must have names corresponding to the state
+names.</li>
+<li>The rows represent the source state and the columns represent the
+target state.</li>
+<li>The the sum of probabilities of each row must be 1. We can ensure
+that the final condition is met by setting at most one value in each row
+to be <code>NA</code>; <code>rdecision</code> will replace these by a
+value to ensure the sum of probabilities is correct; normally this is
+assigned to self transitions.</li>
+</ul>
+<p>In this example there are three values for transition probabilities
+(well to disabled, well to dead, disabled to dead), an assumption that
+there is no transition from disabled to well, and an assumption that
+dead is an absorbing state. The matrix is created and set as
+follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>snames <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Well&quot;</span>, <span class="st">&quot;Disabled&quot;</span>, <span class="st">&quot;Dead&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="fl">0.2</span>, <span class="fl">0.2</span>, <span class="fl">0.0</span>, <span class="cn">NA</span>, <span class="fl">0.4</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="cn">NA</span>),</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> 3L, <span class="at">byrow =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="at">source =</span> snames, <span class="at">target =</span> snames)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>m<span class="sc">$</span><span class="fu">set_probabilities</span>(pt)</span></code></pre></div>
+<div class="kable-table">
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Well</th>
+<th align="right">Disabled</th>
+<th align="right">Dead</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Well</td>
+<td align="right">NA</td>
+<td align="right">0.2</td>
+<td align="right">0.2</td>
+</tr>
+<tr class="even">
+<td align="left">Disabled</td>
+<td align="right">0</td>
+<td align="right">NA</td>
+<td align="right">0.4</td>
+</tr>
+<tr class="odd">
+<td align="left">Dead</td>
+<td align="right">0</td>
+<td align="right">0.0</td>
+<td align="right">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The transition probability matrix can be extracted from the model
+using the function <code>transition_probabilities()</code>. The values
+set as <code>NA</code> are replaced as required, and the order of rows
+and columns may differ from the one provided. For this example it is as
+follows:</p>
+<div class="kable-table">
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Well</th>
+<th align="right">Disabled</th>
+<th align="right">Dead</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Disabled</td>
+<td align="right">0.0</td>
+<td align="right">0.6</td>
+<td align="right">0.4</td>
+</tr>
+<tr class="even">
+<td align="left">Well</td>
+<td align="right">0.6</td>
+<td align="right">0.2</td>
+<td align="right">0.2</td>
+</tr>
+<tr class="odd">
+<td align="left">Dead</td>
+<td align="right">0.0</td>
+<td align="right">0.0</td>
+<td align="right">1.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="running-the-model" class="section level1">
+<h1>Running the model</h1>
+<p>In a cohort Markov model, it is necessary to define the starting
+populations in each state. The total population size is arbitrary; it is
+the relative proportions starting in each state that matters. In
+Sonnenberg and Beck’s PHV example, they assume there are 10,000 people
+who start in the “Well” state. In <code>rdecision</code> this is
+achieved by resetting the model; the elapsed time and cycle number can
+be reset with the same call, here we leave them as their default
+values.</p>
+<p>In this case, the state populations are given as integers, but in a
+cohort simulation, most practical transition probability matrices lead
+to state occupancies involving fractions of patients as the simulation
+proceeds. Thus the starting populations can also be given as real
+numbers.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>m<span class="sc">$</span><span class="fu">reset</span>(<span class="at">populations =</span> <span class="fu">c</span>(<span class="at">Well =</span> 10000L, <span class="at">Disabled =</span> 0L, <span class="at">Dead =</span> 0L))</span></code></pre></div>
+<p>To run the model, we call the <code>cycles()</code> method. Following
+the example, there are 25 yearly cycles, and there is no half cycle
+correction. This correction can be applied independently to the output
+to the Markov trace after each cycle for the state population, cycle
+cost and incremental QALYs.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>mt <span class="ot">&lt;-</span> m<span class="sc">$</span><span class="fu">cycles</span>(25L, <span class="at">hcc.pop =</span> <span class="cn">FALSE</span>, <span class="at">hcc.cost =</span> <span class="cn">FALSE</span>, <span class="at">hcc.QALY =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>The <code>cycles()</code> method returns a Markov trace, a data frame
+which contains one row per cycle with details of state populations,
+cumulative costs and QALYs. The trace for this example is as
+follows:</p>
+<div class="kable-table">
+<table>
+<thead>
+<tr class="header">
+<th align="right">Cycle</th>
+<th align="right">Well</th>
+<th align="right">Disabled</th>
+<th align="right">Dead</th>
+<th align="right">QALY</th>
+<th align="right">cQALY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">10000.00</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">0.0000</td>
+<td align="right">0.0000</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">6000.00</td>
+<td align="right">2000.00</td>
+<td align="right">2000.00</td>
+<td align="right">0.7400</td>
+<td align="right">0.7400</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">3600.00</td>
+<td align="right">2400.00</td>
+<td align="right">4000.00</td>
+<td align="right">0.5280</td>
+<td align="right">1.2680</td>
+</tr>
+<tr class="even">
+<td align="right">3</td>
+<td align="right">2160.00</td>
+<td align="right">2160.00</td>
+<td align="right">5680.00</td>
+<td align="right">0.3672</td>
+<td align="right">1.6352</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">1296.00</td>
+<td align="right">1728.00</td>
+<td align="right">6976.00</td>
+<td align="right">0.2506</td>
+<td align="right">1.8858</td>
+</tr>
+<tr class="even">
+<td align="right">5</td>
+<td align="right">777.60</td>
+<td align="right">1296.00</td>
+<td align="right">7926.40</td>
+<td align="right">0.1685</td>
+<td align="right">2.0542</td>
+</tr>
+<tr class="odd">
+<td align="right">6</td>
+<td align="right">466.56</td>
+<td align="right">933.12</td>
+<td align="right">8600.32</td>
+<td align="right">0.1120</td>
+<td align="right">2.1662</td>
+</tr>
+<tr class="even">
+<td align="right">7</td>
+<td align="right">279.94</td>
+<td align="right">653.18</td>
+<td align="right">9066.88</td>
+<td align="right">0.0737</td>
+<td align="right">2.2399</td>
+</tr>
+<tr class="odd">
+<td align="right">8</td>
+<td align="right">167.96</td>
+<td align="right">447.90</td>
+<td align="right">9384.14</td>
+<td align="right">0.0481</td>
+<td align="right">2.2881</td>
+</tr>
+<tr class="even">
+<td align="right">9</td>
+<td align="right">100.78</td>
+<td align="right">302.33</td>
+<td align="right">9596.89</td>
+<td align="right">0.0312</td>
+<td align="right">2.3193</td>
+</tr>
+<tr class="odd">
+<td align="right">10</td>
+<td align="right">60.47</td>
+<td align="right">201.55</td>
+<td align="right">9737.98</td>
+<td align="right">0.0202</td>
+<td align="right">2.3395</td>
+</tr>
+<tr class="even">
+<td align="right">11</td>
+<td align="right">36.28</td>
+<td align="right">133.03</td>
+<td align="right">9830.69</td>
+<td align="right">0.0129</td>
+<td align="right">2.3524</td>
+</tr>
+<tr class="odd">
+<td align="right">12</td>
+<td align="right">21.77</td>
+<td align="right">87.07</td>
+<td align="right">9891.16</td>
+<td align="right">0.0083</td>
+<td align="right">2.3607</td>
+</tr>
+<tr class="even">
+<td align="right">13</td>
+<td align="right">13.06</td>
+<td align="right">56.60</td>
+<td align="right">9930.34</td>
+<td align="right">0.0053</td>
+<td align="right">2.3660</td>
+</tr>
+<tr class="odd">
+<td align="right">14</td>
+<td align="right">7.84</td>
+<td align="right">36.57</td>
+<td align="right">9955.59</td>
+<td align="right">0.0033</td>
+<td align="right">2.3693</td>
+</tr>
+<tr class="even">
+<td align="right">15</td>
+<td align="right">4.70</td>
+<td align="right">23.51</td>
+<td align="right">9971.79</td>
+<td align="right">0.0021</td>
+<td align="right">2.3714</td>
+</tr>
+<tr class="odd">
+<td align="right">16</td>
+<td align="right">2.82</td>
+<td align="right">15.05</td>
+<td align="right">9982.13</td>
+<td align="right">0.0013</td>
+<td align="right">2.3728</td>
+</tr>
+<tr class="even">
+<td align="right">17</td>
+<td align="right">1.69</td>
+<td align="right">9.59</td>
+<td align="right">9988.72</td>
+<td align="right">0.0008</td>
+<td align="right">2.3736</td>
+</tr>
+<tr class="odd">
+<td align="right">18</td>
+<td align="right">1.02</td>
+<td align="right">6.09</td>
+<td align="right">9992.89</td>
+<td align="right">0.0005</td>
+<td align="right">2.3741</td>
+</tr>
+<tr class="even">
+<td align="right">19</td>
+<td align="right">0.61</td>
+<td align="right">3.86</td>
+<td align="right">9995.53</td>
+<td align="right">0.0003</td>
+<td align="right">2.3745</td>
+</tr>
+<tr class="odd">
+<td align="right">20</td>
+<td align="right">0.37</td>
+<td align="right">2.44</td>
+<td align="right">9997.20</td>
+<td align="right">0.0002</td>
+<td align="right">2.3747</td>
+</tr>
+<tr class="even">
+<td align="right">21</td>
+<td align="right">0.22</td>
+<td align="right">1.54</td>
+<td align="right">9998.25</td>
+<td align="right">0.0001</td>
+<td align="right">2.3748</td>
+</tr>
+<tr class="odd">
+<td align="right">22</td>
+<td align="right">0.13</td>
+<td align="right">0.97</td>
+<td align="right">9998.90</td>
+<td align="right">0.0001</td>
+<td align="right">2.3749</td>
+</tr>
+<tr class="even">
+<td align="right">23</td>
+<td align="right">0.08</td>
+<td align="right">0.61</td>
+<td align="right">9999.32</td>
+<td align="right">0.0001</td>
+<td align="right">2.3749</td>
+</tr>
+<tr class="odd">
+<td align="right">24</td>
+<td align="right">0.05</td>
+<td align="right">0.38</td>
+<td align="right">9999.57</td>
+<td align="right">0.0000</td>
+<td align="right">2.3749</td>
+</tr>
+<tr class="even">
+<td align="right">25</td>
+<td align="right">0.03</td>
+<td align="right">0.24</td>
+<td align="right">9999.73</td>
+<td align="right">0.0000</td>
+<td align="right">2.3750</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The column labelled “QALY” is the per-patient quality adjusted life
+years accumulated at each cycle (in Sonnenberg and Beck’s Table 2 this
+is labelled as “Cycle Sum” and is for the whole cohort of 10,000
+people), and the column labelled “cQALY” is the per-patient cumulative
+quality adjusted life years over the simulation (in Sonnenberg and
+Beck’s Table 2 this is labelled as “Cumulative Utility” and is for the
+whole cohort).</p>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body" line-spacing="2">
+<div id="ref-sonnenberg1993" class="csl-entry">
+<div class="csl-left-margin">1. </div><div class="csl-right-inline">Sonnenberg, F. A. &amp; Beck, J. R. <a href="https://doi.org/10.1177/0272989X9301300409">Markov
+<span>Models</span> in <span>Medical</span> <span>Decision</span>
+<span>Making</span>: <span>A</span> <span>Practical</span>
+<span>Guide</span></a>. <em>Medical Decision Making</em>
+<strong>13,</strong> 322–338 (1993).</div>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
